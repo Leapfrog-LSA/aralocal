@@ -1,20 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-    /* config options here */
+    // Standalone output bundles a minimal Node server in
+    // .next/standalone/server.js. The Electron main process spawns it in prod.
+    output: "standalone",
     reactCompiler: true,
-    async rewrites() {
-        return [
-            {
-                source: "/sitemap.xml",
-                destination: "/api/sitemap/sitemap.xml",
-            },
-            {
-                source: "/sitemap_:slug.xml",
-                destination: "/api/sitemap/sitemap_:slug.xml",
-            },
-        ];
-    },
     skipTrailingSlashRedirect: true,
 };
 

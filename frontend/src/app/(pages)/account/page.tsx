@@ -8,11 +8,13 @@ import { LogOut, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { deleteAccount } from "@/app/lib/mikeApi";
+import { useCapabilities } from "@/app/hooks/useCapabilities";
 
 export default function AccountPage() {
     const router = useRouter();
     const { user, signOut } = useAuth();
     const { profile, updateDisplayName, updateOrganisation } = useUserProfile();
+    const { capabilities } = useCapabilities();
     const [displayName, setDisplayName] = useState("");
     const [isSavingName, setIsSavingName] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -163,17 +165,48 @@ export default function AccountPage() {
                 </div>
             </div>
 
-            {/* Plan */}
+            {/* System */}
             <div className="py-6">
                 <div className="flex items-center gap-2 mb-4">
-                    <h2 className="text-2xl font-medium font-serif">
-                        Usage Plan
-                    </h2>
+                    <h2 className="text-2xl font-medium font-serif">System</h2>
                 </div>
-                <div>
-                    <p className="text-base font-medium text-gray-500 capitalize">
-                        {profile?.tier || "Free"}
-                    </p>
+                <div className="space-y-3 max-w-xl">
+                    <div>
+                        <p className="text-sm text-gray-600 mb-1">
+                            LibreOffice
+                            <span className="text-xs text-gray-400 ml-2">
+                                (used to convert Word documents to PDF for
+                                preview)
+                            </span>
+                        </p>
+                        {capabilities?.libreoffice.available ? (
+                            <p className="text-sm text-green-700">
+                                Installed
+                                {capabilities.libreoffice.version
+                                    ? ` — ${capabilities.libreoffice.version}`
+                                    : ""}
+                            </p>
+                        ) : capabilities ? (
+                            <p className="text-sm text-amber-700">
+                                Not installed.{" "}
+                                <a
+                                    href={
+                                        capabilities.libreoffice.install_url ??
+                                        "https://www.libreoffice.org/download/download/"
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline hover:text-amber-900"
+                                >
+                                    Download LibreOffice
+                                </a>{" "}
+                                — without it, Word documents still upload but
+                                can&rsquo;t be previewed as PDF in-app.
+                            </p>
+                        ) : (
+                            <p className="text-sm text-gray-400">Checking…</p>
+                        )}
+                    </div>
                 </div>
             </div>
 

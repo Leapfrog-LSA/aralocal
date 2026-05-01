@@ -1,0 +1,71 @@
+{
+  "name": "mikelocal-desktop",
+  "version": "0.1.0",
+  "description": "Mike — local desktop AI legal platform (Electron shell over the upstream Next.js + Express app)",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n FRONTEND,ELECTRON -c blue,magenta \"npm:dev:frontend\" \"npm:dev:electron\"",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:electron": "wait-on http://localhost:3000 && npm run build:electron && cross-env NODE_ENV=development electron .",
+    "electron:lock-only": "npm run build:electron && cross-env NODE_ENV=development electron .",
+    "install:all": "npm install && npm --prefix frontend install && npm --prefix backend install",
+    "build:electron": "tsc -p tsconfig.electron.json && node scripts/copy-electron-assets.js",
+    "build:frontend": "npm --prefix frontend run build && node scripts/stage-frontend.js",
+    "build:backend": "npm --prefix backend run build",
+    "build": "npm run build:electron && npm run build:backend && npm run build:frontend",
+    "dist": "npm run build && electron-builder",
+    "rebuild-native": "electron-builder install-app-deps"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.mikelocal.desktop",
+    "productName": "Mike",
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**/*",
+      "**/node_modules/bindings/**/*",
+      "**/node_modules/file-uri-to-path/**/*",
+      "frontend/.next/standalone/**/*",
+      "frontend/.next/static/**/*",
+      "backend/dist/**/*",
+      "backend/migrations/**/*",
+      "backend/node_modules/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "frontend/.next/standalone/**/*",
+      "frontend/.next/static/**/*",
+      "frontend/public/**/*",
+      "backend/dist/**/*",
+      "backend/migrations/**/*",
+      "backend/node_modules/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "artifactName": "Mike-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "shortcutName": "Mike"
+    }
+  }
+}

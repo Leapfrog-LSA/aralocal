@@ -1,6 +1,7 @@
 node_modules
 .next
 dist
+dist-electron
 out
 build
 .open-next
@@ -16,3 +17,5 @@ next-env.d.ts
 .DS_Store
 .vercel
 coverage
+
+.claude/settings.local.json

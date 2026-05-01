@@ -61,9 +61,9 @@ export default function ModelsAndApiKeysPage() {
                     </h2>
                 </div>
                 <p className="text-sm text-gray-500 mb-4 max-w-xl">
-                    You must provide your own API keys for the app to work or
-                    add your API keys into the .env file if you are running your
-                    own instance of Mike.
+                    Mike needs at least one API key from a model provider to
+                    answer questions. Your keys stay in your workspace and are
+                    only used to call the provider you choose.
                 </p>
                 <p className="text-xs text-gray-400 mb-4 max-w-xl">
                     Title generation automatically routes to the cheapest model
@@ -74,6 +74,8 @@ export default function ModelsAndApiKeysPage() {
                     <ApiKeyField
                         label="Anthropic (Claude) API Key"
                         placeholder="sk-ant-…"
+                        helpHref="https://console.anthropic.com/settings/keys"
+                        helpLabel="Where do I get a Claude key?"
                         initialValue={profile?.claudeApiKey ?? ""}
                         onSave={(value) =>
                             updateApiKey("claude", value.trim() || null)
@@ -82,6 +84,8 @@ export default function ModelsAndApiKeysPage() {
                     <ApiKeyField
                         label="Google (Gemini) API Key"
                         placeholder="AI…"
+                        helpHref="https://aistudio.google.com/app/apikey"
+                        helpLabel="Where do I get a Gemini key?"
                         initialValue={profile?.geminiApiKey ?? ""}
                         onSave={(value) =>
                             updateApiKey("gemini", value.trim() || null)
@@ -185,11 +189,15 @@ function ApiKeyField({
     placeholder,
     initialValue,
     onSave,
+    helpHref,
+    helpLabel,
 }: {
     label: string;
     placeholder: string;
     initialValue: string;
     onSave: (value: string) => Promise<boolean>;
+    helpHref?: string;
+    helpLabel?: string;
 }) {
     const [value, setValue] = useState(initialValue);
     const [reveal, setReveal] = useState(false);
@@ -216,7 +224,19 @@ function ApiKeyField({
 
     return (
         <div>
-            <label className="text-sm text-gray-600 block mb-2">{label}</label>
+            <div className="flex items-center justify-between mb-2">
+                <label className="text-sm text-gray-600">{label}</label>
+                {helpHref ? (
+                    <a
+                        href={helpHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-gray-400 hover:text-gray-700 underline-offset-2 hover:underline"
+                    >
+                        {helpLabel ?? "Where do I get this?"}
+                    </a>
+                ) : null}
+            </div>
             <div className="flex gap-2">
                 <div className="relative flex-1">
                     <Input

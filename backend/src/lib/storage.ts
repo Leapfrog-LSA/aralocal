@@ -1,40 +1,40 @@
 /**
- * Cloudflare R2 storage utilities for Mike document management.
- * R2 is S3-compatible — uses @aws-sdk/client-s3.
+ * Local-filesystem storage for the Mike desktop app.
  *
- * Required env vars:
- *   R2_ENDPOINT_URL     — https://<account-id>.r2.cloudflarestorage.com
- *   R2_ACCESS_KEY_ID    — R2 API token (Access Key ID)
- *   R2_SECRET_ACCESS_KEY — R2 API token (Secret Access Key)
- *   R2_BUCKET_NAME      — bucket name (default: "mike")
+ * Files live under `<WORKSPACE_PATH>/files/<key>`. Every read/write resolves
+ * the absolute path and rejects anything outside the workspace root (path-
+ * traversal guard). The "signed URL" returned to the frontend is a short-lived
+ * token URL that hits the `/files` route on the local backend.
  */
 
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl as awsGetSignedUrl } from "@aws-sdk/s3-request-presigner";
+import * as fs from "fs";
+import * as path from "path";
+import * as crypto from "crypto";
 
-function getClient(): S3Client {
-  return new S3Client({
-    region: "auto",
-    endpoint: process.env.R2_ENDPOINT_URL!,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-    },
-  });
+function workspacePath(): string {
+  const ws = process.env.WORKSPACE_PATH;
+  if (!ws) {
+    throw new Error("WORKSPACE_PATH is not set");
+  }
+  return ws;
 }
 
-const BUCKET = process.env.R2_BUCKET_NAME ?? "mike";
+function filesRoot(): string {
+  return path.join(workspacePath(), "files");
+}
 
-export const storageEnabled = Boolean(
-  process.env.R2_ENDPOINT_URL &&
-  process.env.R2_ACCESS_KEY_ID &&
-  process.env.R2_SECRET_ACCESS_KEY,
-);
+function resolveSafe(key: string): string {
+  // Normalize and reject paths that escape the files root after resolution.
+  const root = path.resolve(filesRoot());
+  const candidate = path.resolve(root, key);
+  const rel = path.relative(root, candidate);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new Error(`Storage key escapes workspace: ${key}`);
+  }
+  return candidate;
+}
+
+export const storageEnabled = true;
 
 // ---------------------------------------------------------------------------
 // Upload
@@ -43,17 +43,11 @@ export const storageEnabled = Boolean(
 export async function uploadFile(
   key: string,
   content: ArrayBuffer,
-  contentType: string,
+  _contentType: string,
 ): Promise<void> {
-  const client = getClient();
-  await client.send(
-    new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      Body: Buffer.from(content),
-      ContentType: contentType,
-    }),
-  );
+  const dest = resolveSafe(key);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  await fs.promises.writeFile(dest, Buffer.from(content));
 }
 
 // ---------------------------------------------------------------------------
@@ -61,15 +55,10 @@ export async function uploadFile(
 // ---------------------------------------------------------------------------
 
 export async function downloadFile(key: string): Promise<ArrayBuffer | null> {
-  if (!storageEnabled) return null;
   try {
-    const client = getClient();
-    const response = await client.send(
-      new GetObjectCommand({ Bucket: BUCKET, Key: key }),
-    );
-    if (!response.Body) return null;
-    const bytes = await response.Body.transformToByteArray();
-    return bytes.buffer as ArrayBuffer;
+    const src = resolveSafe(key);
+    const buf = await fs.promises.readFile(src);
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
   } catch {
     return null;
   }
@@ -80,40 +69,122 @@ export async function downloadFile(key: string): Promise<ArrayBuffer | null> {
 // ---------------------------------------------------------------------------
 
 export async function deleteFile(key: string): Promise<void> {
-  if (!storageEnabled) return;
-  const client = getClient();
-  await client.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+  try {
+    const target = resolveSafe(key);
+    await fs.promises.unlink(target);
+  } catch {
+    // Missing file = already deleted; not an error.
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Signed URL (pre-signed for temporary direct access)
+// Signed URL  → short-lived JWT-bearing URL to the local /files route
 // ---------------------------------------------------------------------------
+
+const FILE_TOKEN_TTL_SECONDS = 3600;
+
+function b64url(input: Buffer | string): string {
+  const buf = typeof input === "string" ? Buffer.from(input) : input;
+  return buf
+    .toString("base64")
+    .replace(/=+$/, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+function getJwtSecret(): Buffer {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET is not configured");
+  return Buffer.from(secret, "hex");
+}
+
+export function signFileToken(
+  key: string,
+  filename?: string,
+  ttlSeconds = FILE_TOKEN_TTL_SECONDS,
+): string {
+  const header = b64url(JSON.stringify({ alg: "HS256", typ: "FT" }));
+  const now = Math.floor(Date.now() / 1000);
+  const payload = b64url(
+    JSON.stringify({
+      key,
+      fn: filename ?? null,
+      iat: now,
+      exp: now + ttlSeconds,
+    }),
+  );
+  const signing = `${header}.${payload}`;
+  const sig = crypto
+    .createHmac("sha256", getJwtSecret())
+    .update(signing)
+    .digest();
+  return `${signing}.${b64url(sig)}`;
+}
+
+export interface VerifiedFileToken {
+  key: string;
+  filename: string | null;
+}
+
+export function verifyFileToken(token: string): VerifiedFileToken {
+  const parts = token.split(".");
+  if (parts.length !== 3) throw new Error("Malformed file token");
+  const [headerB64, payloadB64, sigB64] = parts;
+  const expected = crypto
+    .createHmac("sha256", getJwtSecret())
+    .update(`${headerB64}.${payloadB64}`)
+    .digest();
+  const provided = Buffer.from(
+    sigB64.replace(/-/g, "+").replace(/_/g, "/") +
+      "=".repeat((4 - (sigB64.length % 4)) % 4),
+    "base64",
+  );
+  if (
+    expected.length !== provided.length ||
+    !crypto.timingSafeEqual(expected, provided)
+  ) {
+    throw new Error("Invalid file token signature");
+  }
+  const payload = JSON.parse(
+    Buffer.from(
+      payloadB64.replace(/-/g, "+").replace(/_/g, "/") +
+        "=".repeat((4 - (payloadB64.length % 4)) % 4),
+      "base64",
+    ).toString(),
+  ) as { key: string; fn: string | null; exp: number };
+  if (payload.exp * 1000 < Date.now()) throw new Error("File token expired");
+  return { key: payload.key, filename: payload.fn };
+}
 
 export async function getSignedUrl(
   key: string,
-  expiresIn = 3600,
+  expiresIn = FILE_TOKEN_TTL_SECONDS,
   downloadFilename?: string,
 ): Promise<string | null> {
-  if (!storageEnabled) return null;
   try {
-    const client = getClient();
-    // Override the response Content-Disposition so the browser uses this
-    // filename on download, instead of the last path segment of the R2 key
-    // (which includes the document UUID). The `download` attribute on <a>
-    // is ignored for cross-origin URLs, so we have to set it server-side.
-    const responseContentDisposition = downloadFilename
-      ? buildContentDisposition("attachment", downloadFilename)
-      : undefined;
-    const command = new GetObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      ResponseContentDisposition: responseContentDisposition,
-    });
-    return await awsGetSignedUrl(client, command, { expiresIn });
+    const token = signFileToken(key, downloadFilename, expiresIn);
+    const port = process.env.PORT ?? "3001";
+    return `http://localhost:${port}/files?t=${encodeURIComponent(token)}`;
   } catch {
     return null;
   }
 }
+
+export function resolveStoragePath(key: string): string {
+  return resolveSafe(key);
+}
+
+export function streamableExists(key: string): boolean {
+  try {
+    return fs.statSync(resolveSafe(key)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers (unchanged from the R2 version — same key shapes)
+// ---------------------------------------------------------------------------
 
 export function normalizeDownloadFilename(name: string): string {
   const trimmed = name.trim();
@@ -139,10 +210,6 @@ export function buildContentDisposition(
   const normalized = normalizeDownloadFilename(filename);
   return `${kind}; filename="${sanitizeDispositionFilename(normalized)}"; filename*=UTF-8''${encodeRFC5987(normalized)}`;
 }
-
-// ---------------------------------------------------------------------------
-// Storage key helpers
-// ---------------------------------------------------------------------------
 
 export function storageKey(
   userId: string,
