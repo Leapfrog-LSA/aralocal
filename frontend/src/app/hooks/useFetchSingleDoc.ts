@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { getApiBase } from "@/app/lib/mikeApi";
 
 /**
  * /display returns either PDF bytes (when the active version has a PDF
@@ -43,9 +44,7 @@ export function useFetchSingleDoc(
                 const token = session?.access_token;
                 if (cancelled) return;
 
-                const apiBase =
-                    process.env.NEXT_PUBLIC_API_BASE_URL ??
-                    "http://localhost:3001";
+                const apiBase = await getApiBase();
                 const qs = versionId
                     ? `?version_id=${encodeURIComponent(versionId)}`
                     : "";

@@ -15,6 +15,7 @@
 interface MikeBridge {
     getToken: () => Promise<string | null>;
     getUser: () => Promise<{ id: string; email: string } | null>;
+    signOut?: () => Promise<{ ok: boolean }>;
 }
 
 declare global {
@@ -32,13 +33,43 @@ interface AuthChangeListener {
     (event: string, session: Session | null): void | Promise<void>;
 }
 
-async function readBridge(): Promise<{ token: string; user: { id: string; email: string } } | null> {
+// The JWT and user identity are stable for the lifetime of an unlock —
+// Electron mints them once at unlock and they never rotate until signOut.
+// Cache the first read so we don't pay an IPC round-trip on every API
+// call (the chat hot path was hitting IPC on each `getAuthHeader()`).
+type CachedBridge = {
+    token: string;
+    user: { id: string; email: string };
+} | null;
+
+let cachedBridge: CachedBridge = null;
+let inflightBridge: Promise<CachedBridge> | null = null;
+
+async function readBridge(): Promise<CachedBridge> {
+    if (cachedBridge) return cachedBridge;
+    if (inflightBridge) return inflightBridge;
     if (typeof window === "undefined") return null;
     const bridge = window.mike;
     if (!bridge?.getToken || !bridge?.getUser) return null;
-    const [token, user] = await Promise.all([bridge.getToken(), bridge.getUser()]);
-    if (!token || !user) return null;
-    return { token, user };
+    inflightBridge = (async () => {
+        const [token, user] = await Promise.all([
+            bridge.getToken(),
+            bridge.getUser(),
+        ]);
+        if (!token || !user) return null;
+        cachedBridge = { token, user };
+        return cachedBridge;
+    })();
+    try {
+        return await inflightBridge;
+    } finally {
+        inflightBridge = null;
+    }
+}
+
+function clearBridgeCache(): void {
+    cachedBridge = null;
+    inflightBridge = null;
 }
 
 export const supabase = {
@@ -61,9 +92,18 @@ export const supabase = {
             return { data: { user: bridge?.user ?? null }, error: null };
         },
         async signOut(): Promise<{ error: null }> {
-            // The Electron main process owns the session lifecycle; the only way
-            // to "sign out" in the local app is to quit and re-open. We don't
-            // surface logout in the desktop UI yet, so this is a no-op.
+            // B6: ask the Electron main process to tear down the session, kill
+            // the backend, and return to the lock screen. Without this, the
+            // renderer keeps a valid JWT in memory after the user clicks
+            // "sign out" — making the affordance a lie.
+            clearBridgeCache();
+            if (typeof window !== "undefined") {
+                try {
+                    await window.mike?.signOut?.();
+                } catch {
+                    // main process will reload the lock screen anyway
+                }
+            }
             return { error: null };
         },
         onAuthStateChange(_cb: AuthChangeListener): {

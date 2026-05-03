@@ -10,6 +10,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
+import { getServerPort } from "./serverPort";
 
 function workspacePath(): string {
   const ws = process.env.WORKSPACE_PATH;
@@ -23,13 +24,50 @@ function filesRoot(): string {
   return path.join(workspacePath(), "files");
 }
 
+function isInsideRoot(root: string, candidate: string): boolean {
+  const rel = path.relative(root, candidate);
+  return rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
+}
+
+/**
+ * Resolve a storage key relative to <workspace>/files, rejecting anything
+ * that escapes after path resolution. If the resolved path (or any prefix
+ * of it) is a symlink/junction, follow it with realpath and re-check —
+ * preventing a malicious key from pointing outside the workspace via a
+ * link inside files/.
+ *
+ * NOTE: storage keys are server-generated only. Accepting client-supplied
+ * keys would warrant a defence-in-depth review of every caller.
+ */
 function resolveSafe(key: string): string {
-  // Normalize and reject paths that escape the files root after resolution.
   const root = path.resolve(filesRoot());
   const candidate = path.resolve(root, key);
-  const rel = path.relative(root, candidate);
-  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+  if (!isInsideRoot(root, candidate)) {
     throw new Error(`Storage key escapes workspace: ${key}`);
+  }
+  // realpath follows symlinks. We only have a real path if the file (or one
+  // of its existing ancestors) exists; for newly-created keys, walk up until
+  // we find an existing ancestor and check that.
+  try {
+    const realRoot = fs.realpathSync(root);
+    let probe = candidate;
+    // Walk up to the first existing ancestor.
+    while (!fs.existsSync(probe) && probe !== path.dirname(probe)) {
+      probe = path.dirname(probe);
+    }
+    if (fs.existsSync(probe)) {
+      const realProbe = fs.realpathSync(probe);
+      if (!isInsideRoot(realRoot, realProbe)) {
+        throw new Error(`Storage key escapes workspace via symlink: ${key}`);
+      }
+    }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      // ancestor disappeared between checks — treat as safe (will fail later
+      // with a clearer error from the actual fs op).
+    } else {
+      throw err;
+    }
   }
   return candidate;
 }
@@ -151,7 +189,18 @@ export function verifyFileToken(token: string): VerifiedFileToken {
         "=".repeat((4 - (payloadB64.length % 4)) % 4),
       "base64",
     ).toString(),
-  ) as { key: string; fn: string | null; exp: number };
+  ) as { key: unknown; fn: unknown; exp: unknown };
+  // B3: payload shape validation. Reject anything that doesn't match what
+  // signFileToken produces, even if the HMAC is correct.
+  if (typeof payload.key !== "string" || payload.key.length === 0) {
+    throw new Error("File token has invalid 'key' field");
+  }
+  if (payload.fn !== null && typeof payload.fn !== "string") {
+    throw new Error("File token has invalid 'fn' field");
+  }
+  if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) {
+    throw new Error("File token has invalid 'exp' field");
+  }
   if (payload.exp * 1000 < Date.now()) throw new Error("File token expired");
   return { key: payload.key, filename: payload.fn };
 }
@@ -163,8 +212,12 @@ export async function getSignedUrl(
 ): Promise<string | null> {
   try {
     const token = signFileToken(key, downloadFilename, expiresIn);
-    const port = process.env.PORT ?? "3001";
-    return `http://localhost:${port}/files?t=${encodeURIComponent(token)}`;
+    // Use the actual listening port (set by index.ts after app.listen
+    // resolves the OS-assigned port from PORT=0). Reading process.env.PORT
+    // here would yield "0" and produce broken URLs.
+    // 127.0.0.1 not "localhost" — on Windows, "localhost" can resolve to
+    // ::1 (IPv6) first while the backend binds 127.0.0.1 only.
+    return `http://127.0.0.1:${getServerPort()}/files?t=${encodeURIComponent(token)}`;
   } catch {
     return null;
   }

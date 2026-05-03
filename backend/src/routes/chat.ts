@@ -315,6 +315,7 @@ chatRouter.post("/:chatId/generate-title", requireAuth, async (req, res) => {
 
 // POST /chat — streaming
 chatRouter.post("/", requireAuth, async (req, res) => {
+  try {
     const userId = res.locals.userId as string;
     const { messages, chat_id, project_id, model } = req.body as {
         messages: ChatMessage[];
@@ -396,7 +397,6 @@ chatRouter.post("/", requireAuth, async (req, res) => {
             role: "user",
             content: lastUser.content,
             files: lastUser.files ?? null,
-            workflow: lastUser.workflow ?? null,
         });
     }
 
@@ -484,4 +484,15 @@ chatRouter.post("/", requireAuth, async (req, res) => {
     } finally {
         res.end();
     }
+  } catch (err) {
+    // Catches throws from the prologue (DB inserts, doc-context build, etc.)
+    // that happen BEFORE the inner try block / res.flushHeaders. After
+    // headers are sent we already write SSE errors via the inner catch.
+    console.error("[chat/stream] prologue threw:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ detail: "Internal error" });
+    } else {
+      try { res.end(); } catch { /* ignore */ }
+    }
+  }
 });

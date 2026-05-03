@@ -19,3 +19,11 @@ next-env.d.ts
 coverage
 
 .claude/settings.local.json
+
+# Build artifacts — fetched/regenerated locally, never committed.
+# vendor/ holds the extracted LibreOffice tree (~1.5 GB) populated by
+# scripts/fetch-libreoffice.js. backend/.dist-bundle/ is the staged
+# backend (compiled JS + Electron-rebuilt native modules + prod
+# node_modules) produced by scripts/stage-backend.js during npm run dist.
+/vendor/
+backend/.dist-bundle/

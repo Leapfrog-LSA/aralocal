@@ -1,6 +1,6 @@
 {
   "name": "mikelocal-desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mike — local desktop AI legal platform (Electron shell over the upstream Next.js + Express app)",
   "license": "AGPL-3.0-only",
   "private": true,
@@ -14,9 +14,11 @@
     "install:all": "npm install && npm --prefix frontend install && npm --prefix backend install",
     "build:electron": "tsc -p tsconfig.electron.json && node scripts/copy-electron-assets.js",
     "build:frontend": "npm --prefix frontend run build && node scripts/stage-frontend.js",
-    "build:backend": "npm --prefix backend run build",
+    "build:backend": "npm --prefix backend run build && node scripts/stage-backend.js",
     "build": "npm run build:electron && npm run build:backend && npm run build:frontend",
-    "dist": "npm run build && electron-builder",
+    "fetch:libreoffice": "node scripts/fetch-libreoffice.js",
+    "dist": "npm run fetch:libreoffice && npm run build && electron-builder",
+    "dist:trace": "npm run fetch:libreoffice && npm run build && electron-builder --publish never",
     "rebuild-native": "electron-builder install-app-deps"
   },
   "devDependencies": {
@@ -33,29 +35,20 @@
     "appId": "com.mikelocal.desktop",
     "productName": "Mike",
     "asar": true,
-    "asarUnpack": [
-      "**/node_modules/better-sqlite3/**/*",
-      "**/node_modules/bindings/**/*",
-      "**/node_modules/file-uri-to-path/**/*",
-      "frontend/.next/standalone/**/*",
-      "frontend/.next/static/**/*",
-      "backend/dist/**/*",
-      "backend/migrations/**/*",
-      "backend/node_modules/**/*"
-    ],
     "directories": {
       "output": "dist"
     },
     "files": [
       "dist-electron/**/*",
-      "frontend/.next/standalone/**/*",
-      "frontend/.next/static/**/*",
-      "frontend/public/**/*",
-      "backend/dist/**/*",
-      "backend/migrations/**/*",
-      "backend/node_modules/**/*",
-      "node_modules/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      { "from": "backend/.dist-bundle/dist", "to": "backend/dist" },
+      { "from": "backend/.dist-bundle/node_modules", "to": "backend/node_modules" },
+      { "from": "backend/.dist-bundle/migrations", "to": "backend/migrations" },
+      { "from": "backend/.dist-bundle/package.json", "to": "backend/package.json" },
+      { "from": "frontend/.next/standalone", "to": "frontend/.next/standalone" },
+      { "from": "vendor/libreoffice", "to": "libreoffice" }
     ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],

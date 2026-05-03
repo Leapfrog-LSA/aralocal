@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { MikeIcon } from "@/components/chat/mike-icon";
 import { useFetchDocxBytes } from "@/app/hooks/useFetchDocxBytes";
 import { supabase } from "@/lib/supabase";
+import { getApiBase } from "@/app/lib/mikeApi";
 import {
     clearDocxQuoteHighlights,
     highlightDocxQuote,
@@ -148,8 +149,7 @@ async function tagWIdsOnRenderedDom(
             data: { session },
         } = await supabase.auth.getSession();
         const token = session?.access_token;
-        const apiBase =
-            process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+        const apiBase = await getApiBase();
         const qs = versionId
             ? `?version_id=${encodeURIComponent(versionId)}`
             : "";

@@ -1,5 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
-import * as path from "path";
+import { frontendServerEntry } from "./paths";
+// (log redaction is configured by backend.ts at session start; the frontend
+//  child inherits the same redactor via the shared logging module.)
 
 const FRONTEND_PORT = 3000;
 
@@ -9,35 +11,45 @@ export function spawnFrontend(): void {
   if (process.env.NODE_ENV === "development") return; // dev runs `next dev` externally
   if (frontendProc !== null) return;
 
-  // electron-builder ships the Next.js standalone bundle at:
-  //   resources/app.asar.unpacked/frontend/.next/standalone/server.js
-  // The cwd needs to be the standalone dir so `require()` resolves correctly.
-  const repoRoot = path.resolve(__dirname, "..");
-  const standaloneDir = path.join(
-    repoRoot,
-    "frontend",
-    ".next",
-    "standalone",
-  );
-  const serverEntry = path.join(standaloneDir, "server.js");
+  const entry = frontendServerEntry();
+  if (!entry) {
+    console.error(
+      "[frontend] could not locate server.js inside frontend/.next/standalone/. " +
+        "Was `npm run build:frontend` (which runs scripts/stage-frontend.js) executed before packaging?",
+    );
+    return;
+  }
 
-  frontendProc = spawn(process.execPath, [serverEntry], {
-    cwd: standaloneDir,
+  console.log(
+    `[frontend] spawning: ${process.execPath} ${entry.serverJs} (cwd=${entry.serverDir})`,
+  );
+  frontendProc = spawn(process.execPath, [entry.serverJs], {
+    cwd: entry.serverDir,
     env: {
       ...process.env,
       PORT: String(FRONTEND_PORT),
       HOSTNAME: "127.0.0.1",
       NODE_ENV: "production",
+      // process.execPath is Mike.exe in a packaged app — this env makes it
+      // act as a Node interpreter for the standalone server.js.
+      ELECTRON_RUN_AS_NODE: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   });
-  frontendProc.stdout?.on("data", (b: Buffer) =>
-    process.stdout.write(`[frontend] ${b.toString()}`),
-  );
-  frontendProc.stderr?.on("data", (b: Buffer) =>
-    process.stderr.write(`[frontend] ${b.toString()}`),
-  );
+  frontendProc.on("error", (err) => {
+    console.error(`[frontend] spawn error:`, err);
+  });
+  frontendProc.stdout?.on("data", (b: Buffer) => {
+    const s = b.toString();
+    process.stdout.write(`[frontend] ${s}`);
+    console.log(`[frontend.stdout] ${s.replace(/\n+$/, "")}`);
+  });
+  frontendProc.stderr?.on("data", (b: Buffer) => {
+    const s = b.toString();
+    process.stderr.write(`[frontend] ${s}`);
+    console.error(`[frontend.stderr] ${s.replace(/\n+$/, "")}`);
+  });
   frontendProc.on("exit", (code, signal) => {
     console.log(`[frontend] exited code=${code} signal=${signal}`);
     frontendProc = null;

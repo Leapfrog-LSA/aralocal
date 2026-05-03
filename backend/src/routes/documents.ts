@@ -87,7 +87,11 @@ documentsRouter.delete("/:documentId", requireAuth, async (req, res) => {
         .map((p) => deleteFile(p).catch(() => {})),
     ),
   );
-  await db.from("documents").delete().eq("id", documentId);
+  await db
+    .from("documents")
+    .delete()
+    .eq("id", documentId)
+    .eq("user_id", userId);
   res.status(204).send();
 });
 
@@ -821,13 +825,29 @@ async function handleEditResolution(
 documentsRouter.post(
   "/:documentId/edits/:editId/accept",
   requireAuth,
-  (req, res) => void handleEditResolution(req, res, "accept"),
+  async (req, res) => {
+    try {
+      await handleEditResolution(req, res, "accept");
+    } catch (err) {
+      console.error("[edits/accept] handler threw:", err);
+      if (!res.headersSent)
+        res.status(500).json({ detail: "Internal error" });
+    }
+  },
 );
 
 documentsRouter.post(
   "/:documentId/edits/:editId/reject",
   requireAuth,
-  (req, res) => void handleEditResolution(req, res, "reject"),
+  async (req, res) => {
+    try {
+      await handleEditResolution(req, res, "reject");
+    } catch (err) {
+      console.error("[edits/reject] handler threw:", err);
+      if (!res.headersSent)
+        res.status(500).json({ detail: "Internal error" });
+    }
+  },
 );
 
 async function handleDocumentUpload(

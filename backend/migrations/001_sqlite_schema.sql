@@ -1,4 +1,10 @@
 -- Mike one-shot SQLite schema (port of 000_one_shot_schema.sql).
+--
+-- IMPORTANT: when adding/removing columns that store JSON, also update
+-- JSON_COLUMNS_BY_TABLE in backend/src/db/supabaseShim.ts so the shim
+-- encode/decode logic round-trips correctly. Forgetting this causes silent
+-- "[object Object]" storage on insert and stringified rows on select.
+--
 -- Differences from the Postgres original:
 --   - uuid → TEXT  (app code generates IDs via crypto.randomUUID())
 --   - jsonb → TEXT (we store JSON-encoded strings)

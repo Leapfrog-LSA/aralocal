@@ -71,6 +71,19 @@ export function verifyLocalJwt(token: string): VerifiedJwt {
   if (parts.length !== 3) throw new Error("Malformed token");
   const [headerB64, payloadB64, sigB64] = parts;
 
+  let header: { alg?: unknown; typ?: unknown };
+  try {
+    header = JSON.parse(b64urlDecode(headerB64).toString()) as {
+      alg?: unknown;
+      typ?: unknown;
+    };
+  } catch {
+    throw new Error("Malformed token header");
+  }
+  if (header.alg !== "HS256" || header.typ !== "JWT") {
+    throw new Error("Unsupported token alg/typ");
+  }
+
   const expected = crypto
     .createHmac("sha256", getSecret())
     .update(`${headerB64}.${payloadB64}`)
@@ -84,8 +97,14 @@ export function verifyLocalJwt(token: string): VerifiedJwt {
   }
 
   const payload = JSON.parse(b64urlDecode(payloadB64).toString()) as Payload;
+  if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) {
+    throw new Error("Invalid token exp");
+  }
   if (payload.exp * 1000 < Date.now()) {
     throw new Error("Token expired");
+  }
+  if (typeof payload.sub !== "string" || !payload.sub) {
+    throw new Error("Invalid token sub");
   }
   return { sub: payload.sub, email: payload.email ?? "" };
 }

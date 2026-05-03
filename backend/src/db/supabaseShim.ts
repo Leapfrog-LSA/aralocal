@@ -52,14 +52,18 @@ type Mode = "select" | "insert" | "update" | "upsert" | "delete";
 //   single/maybe → { data: T | null, error, count }
 // Returning these as concrete array vs row types keeps TS strict-mode happy
 // with the codebase's `data.map(...)` / `data.length` / row-property patterns.
+interface ShimError {
+  message: string;
+  code?: string;
+}
 interface ListResult<T> {
   data: T[] | null;
-  error: { message: string } | null;
+  error: ShimError | null;
   count?: number | null;
 }
 interface SingleResult<T> {
   data: T | null;
-  error: { message: string } | null;
+  error: ShimError | null;
   count?: number | null;
 }
 
@@ -89,6 +93,12 @@ function encodeForSqlite(table: string, row: Record<string, unknown>): Record<st
       out[k] = null;
     } else if (typeof v === "boolean") {
       out[k] = v ? 1 : 0;
+    } else if (v instanceof Map || v instanceof Set) {
+      // These don't survive JSON.stringify — silently storing
+      // "[object Map]" used to be the failure mode. Surface it loudly.
+      throw new Error(
+        `encodeForSqlite: ${table}.${k} is a ${v.constructor.name}; convert to a plain object/array before insert`,
+      );
     } else if (isJsonColumn(table, k) && typeof v !== "string") {
       out[k] = JSON.stringify(v);
     } else if (
@@ -117,7 +127,11 @@ function decodeRow(table: string, row: Record<string, unknown>): Record<string, 
       try {
         out[k] = JSON.parse(out[k] as string);
       } catch {
-        // leave as string if not valid JSON
+        // C7: leave as string if not valid JSON, but warn so DB corruption
+        // doesn't sit silently.
+        console.warn(
+          `[shim] failed to JSON.parse ${table}.${k}; keeping raw string`,
+        );
       }
     }
   }
@@ -604,6 +618,21 @@ class Query<T = any> implements PromiseLike<ListResult<T>> {
         const enc = encodeForSqlite(this.table, withId);
         const cols = Object.keys(enc);
         const placeholders = cols.map(() => "?").join(",");
+
+        // B4: Postgrest semantics — when ignoreDuplicates is set, .select()
+        // returns ONLY newly-inserted rows. Pre-check existence so the
+        // returned array reflects what actually got inserted.
+        let preExisting = false;
+        if (this.upsertIgnoreDuplicates) {
+          const lookupSql = `SELECT 1 FROM ${quoteIdent(this.table)} WHERE ${conflictCols
+            .map((c) => `${quoteIdent(c)} = ?`)
+            .join(" AND ")}`;
+          const found = db
+            .prepare(lookupSql)
+            .get(...conflictCols.map((c) => enc[c]));
+          preExisting = found !== undefined;
+        }
+
         let conflictClause: string;
         if (this.upsertIgnoreDuplicates) {
           conflictClause = "DO NOTHING";
@@ -622,8 +651,8 @@ class Query<T = any> implements PromiseLike<ListResult<T>> {
           .map(quoteIdent)
           .join(",")}) ${conflictClause}`;
         db.prepare(sql).run(...cols.map((c) => enc[c]));
-        if (this.returning) {
-          // Look up by conflict columns
+
+        if (this.returning && !(this.upsertIgnoreDuplicates && preExisting)) {
           const lookupSql = `SELECT * FROM ${quoteIdent(this.table)} WHERE ${conflictCols
             .map((c) => `${quoteIdent(c)} = ?`)
             .join(" AND ")}`;
@@ -687,7 +716,9 @@ class Query<T = any> implements PromiseLike<ListResult<T>> {
       if (rows.length === 0) {
         return {
           data: null,
-          error: { message: "No rows found" },
+          // C8: Postgrest returns this code; callers (and supabase-js) use it
+          // to distinguish "no rows" from real errors.
+          error: { message: "No rows found", code: "PGRST116" },
           count,
         };
       }

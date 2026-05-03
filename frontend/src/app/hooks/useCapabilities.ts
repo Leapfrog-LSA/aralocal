@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-
-const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+import { getApiBase } from "@/app/lib/mikeApi";
 
 export interface Capabilities {
     libreoffice: {
@@ -26,7 +24,7 @@ async function fetchCapabilities(): Promise<Capabilities | null> {
         } = await supabase.auth.getSession();
         if (!session?.access_token) return null;
         try {
-            const resp = await fetch(`${API_BASE}/auth/capabilities`, {
+            const resp = await fetch(`${await getApiBase()}/auth/capabilities`, {
                 headers: { Authorization: `Bearer ${session.access_token}` },
             });
             if (!resp.ok) return null;

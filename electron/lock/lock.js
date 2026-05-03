@@ -40,8 +40,8 @@ $("setPasswordBtn").addEventListener("click", async () => {
   setError("");
   const pw = $("newPassword").value;
   const confirm = $("newPasswordConfirm").value;
-  if (pw.length < 6) {
-    setError("Password must be at least 6 characters.");
+  if (pw.length < 10) {
+    setError("Password must be at least 10 characters.");
     return;
   }
   if (pw !== confirm) {

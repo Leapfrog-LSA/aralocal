@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import * as crypto from "crypto";
+import * as fs from "fs";
 import * as path from "path";
 import {
   readConfig,
@@ -17,19 +18,27 @@ import {
 } from "./auth";
 import { readSecrets } from "./secrets";
 import { signLocalJwt } from "./jwt";
-import { spawnBackend, stopBackend, waitForBackend, getBackendPort } from "./backend";
+import {
+  spawnBackend,
+  stopBackend,
+  waitForBackend,
+  getBackendPort,
+  getBackendExitInfo,
+} from "./backend";
 import { spawnFrontend, stopFrontend, waitForFrontend } from "./frontend";
+import { initLogging, getLogPath, closeLogging } from "./logging";
 
-const isDev = process.env.NODE_ENV === "development";
 const FRONTEND_URL = "http://localhost:3000";
 const LOCAL_USER_ID = "local-user";
 const LOCAL_USER_EMAIL = "user@local";
 const JWT_TTL_SECONDS = 60 * 60 * 24; // 24h
 
 let win: BrowserWindow | null = null;
+let lockWebContents: Electron.WebContents | null = null;
 let currentWorkspace: string | null = null;
 let sessionJwt: string | null = null;
 let sessionSecret: string | null = null;
+let unlocking = false;
 
 function createWindow(): BrowserWindow {
   const w = new BrowserWindow({
@@ -43,18 +52,68 @@ function createWindow(): BrowserWindow {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
   w.removeMenu();
+
+  w.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedURL) => {
+      if (errorCode === -3) return;
+      console.error(
+        `[loadURL failed] code=${errorCode} desc=${errorDescription} url=${validatedURL}`,
+      );
+      dialog.showErrorBox(
+        "Mike couldn't load",
+        `Failed to open ${validatedURL}\n\n${errorDescription} (code ${errorCode})\n\n` +
+          (getLogPath() ? `Check the log file:\n${getLogPath()}` : ""),
+      );
+    },
+  );
+
+  // Window-scoped DevTools / log shortcuts. DevTools toggles are gated on
+  // dev builds and locked out while the lock screen is showing — a packaged
+  // user has no business reaching DevTools, and an attacker with physical
+  // access to the lock screen could otherwise read the password input.
+  w.webContents.on("before-input-event", (_e, input) => {
+    if (input.type !== "keyDown") return;
+    const devToolsAllowed = !app.isPackaged && lockWebContents === null;
+    if (input.key === "F12") {
+      if (devToolsAllowed) w.webContents.toggleDevTools();
+    } else if (
+      (input.control || input.meta) &&
+      input.shift &&
+      input.key.toLowerCase() === "i"
+    ) {
+      if (devToolsAllowed) w.webContents.toggleDevTools();
+    } else if (
+      (input.control || input.meta) &&
+      input.shift &&
+      input.key.toLowerCase() === "l"
+    ) {
+      const lp = getLogPath();
+      if (lp) void shell.openPath(lp);
+    }
+  });
+  // If something else opens DevTools (renderer-initiated, etc.) while we're
+  // on the lock screen, slam them shut.
+  w.webContents.on("devtools-opened", () => {
+    if (lockWebContents !== null || app.isPackaged) {
+      w.webContents.closeDevTools();
+    }
+  });
+
   return w;
 }
 
 function loadLockScreen(w: BrowserWindow): void {
   void w.loadFile(path.join(__dirname, "lock", "lock.html"));
+  lockWebContents = w.webContents;
 }
 
 function loadMainApp(w: BrowserWindow): void {
+  lockWebContents = null;
   void w.loadURL(FRONTEND_URL);
 }
 
@@ -66,15 +125,29 @@ async function startSession(workspace: string): Promise<void> {
     LOCAL_USER_EMAIL,
     JWT_TTL_SECONDS,
   );
+  const downloadSecret = crypto.randomBytes(32).toString("hex");
 
   const apiKeys = readSecrets(workspace) as Record<string, string | undefined>;
   spawnBackend({
     workspace,
     jwtSecret: sessionSecret,
+    downloadSecret,
     userId: LOCAL_USER_ID,
     userEmail: LOCAL_USER_EMAIL,
     apiKeys,
   });
+}
+
+function tailLogFile(maxLines = 50): string {
+  const lp = getLogPath();
+  if (!lp) return "(no log file)";
+  try {
+    const data = fs.readFileSync(lp, "utf8");
+    const lines = data.trimEnd().split(/\r?\n/);
+    return lines.slice(-maxLines).join("\n");
+  } catch {
+    return "(unable to read log)";
+  }
 }
 
 ipcMain.handle("mike:getState", () => {
@@ -83,7 +156,9 @@ ipcMain.handle("mike:getState", () => {
     currentWorkspace ??
     (isWorkspaceValid(cfg.lastWorkspace) ? cfg.lastWorkspace! : null);
   if (ws !== currentWorkspace) currentWorkspace = ws;
-  const lock = isLockedOut();
+  const lock = ws
+    ? isLockedOut(ws)
+    : { locked: false, secondsRemaining: 0 };
   return {
     workspace: ws,
     hasPassword: ws ? hasPassword(ws) : false,
@@ -93,57 +168,149 @@ ipcMain.handle("mike:getState", () => {
 });
 
 ipcMain.handle("mike:pickWorkspace", async () => {
+  // C5: don't allow workspace switch while a session is active.
+  if (sessionJwt !== null) {
+    return {
+      ok: false,
+      error: "Sign out first before switching workspaces.",
+    };
+  }
   const picked = await pickWorkspace();
   if (!picked) return { ok: false };
   writeConfig({ lastWorkspace: picked });
   currentWorkspace = picked;
+  try {
+    initLogging(picked);
+  } catch (err) {
+    console.warn("[pickWorkspace] failed to init log file:", err);
+  }
   return { ok: true, workspace: picked, hasPassword: hasPassword(picked) };
 });
 
-ipcMain.handle("mike:setPassword", (_e, password: unknown) => {
+// A1: only the lock screen may set the initial password. Once the renderer
+// loads the main app, this IPC is closed. To rotate a password from inside
+// the app, use `mike:changePassword` (requires the current password).
+ipcMain.handle("mike:setPassword", async (event, password: unknown) => {
+  if (event.sender !== lockWebContents) {
+    return {
+      ok: false,
+      error: "setPassword can only be called from the lock screen.",
+    };
+  }
   if (!currentWorkspace) return { ok: false, error: "No workspace selected." };
   if (typeof password !== "string") {
     return { ok: false, error: "Invalid password input." };
   }
+  if (hasPassword(currentWorkspace)) {
+    return {
+      ok: false,
+      error:
+        "A password is already set for this workspace. Use Change Password instead.",
+    };
+  }
   try {
-    setPassword(currentWorkspace, password);
+    await setPassword(currentWorkspace, password);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }
 });
 
-ipcMain.handle("mike:unlock", async (_e, password: unknown) => {
-  if (!currentWorkspace) return { ok: false, error: "No workspace selected." };
-  if (typeof password !== "string") {
-    return { ok: false, error: "Invalid password input." };
-  }
-  const lock = isLockedOut();
-  if (lock.locked) {
-    return {
-      ok: false,
-      error: `Too many failed attempts. Try again in ${lock.secondsRemaining}s.`,
-    };
-  }
-  if (!verifyPassword(currentWorkspace, password)) {
-    recordFailedAttempt();
-    return { ok: false, error: "Incorrect password." };
-  }
-  recordSuccessfulAttempt();
+ipcMain.handle(
+  "mike:changePassword",
+  async (_event, oldPassword: unknown, newPassword: unknown) => {
+    if (!currentWorkspace) {
+      return { ok: false, error: "No workspace selected." };
+    }
+    if (typeof oldPassword !== "string" || typeof newPassword !== "string") {
+      return { ok: false, error: "Invalid password input." };
+    }
+    if (!hasPassword(currentWorkspace)) {
+      return { ok: false, error: "No password to change." };
+    }
+    const ok = await verifyPassword(currentWorkspace, oldPassword);
+    if (!ok) return { ok: false, error: "Current password is incorrect." };
+    try {
+      await setPassword(currentWorkspace, newPassword);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
+    }
+  },
+);
 
-  await startSession(currentWorkspace);
-  // In prod, spawn the Next.js standalone server too. In dev, `next dev`
-  // is launched externally via concurrently.
-  spawnFrontend();
-  const [backendReady, frontendReady] = await Promise.all([
-    waitForBackend(20_000),
-    waitForFrontend(20_000),
-  ]);
-  if (!backendReady)
-    console.warn("Backend did not become ready in time; loading frontend anyway.");
-  if (!frontendReady)
-    console.warn("Frontend did not become ready in time; loading anyway.");
-  if (win) loadMainApp(win);
+ipcMain.handle("mike:unlock", async (_e, password: unknown) => {
+  if (unlocking) {
+    return { ok: false, error: "Unlock already in progress." };
+  }
+  unlocking = true;
+  try {
+    if (!currentWorkspace) {
+      return { ok: false, error: "No workspace selected." };
+    }
+    if (typeof password !== "string") {
+      return { ok: false, error: "Invalid password input." };
+    }
+    const lock = isLockedOut(currentWorkspace);
+    if (lock.locked) {
+      return {
+        ok: false,
+        error: `Too many failed attempts. Try again in ${lock.secondsRemaining}s.`,
+      };
+    }
+    const ok = await verifyPassword(currentWorkspace, password);
+    if (!ok) {
+      recordFailedAttempt(currentWorkspace);
+      return { ok: false, error: "Incorrect password." };
+    }
+    recordSuccessfulAttempt(currentWorkspace);
+
+    await startSession(currentWorkspace);
+    spawnFrontend();
+    const [backendReady, frontendReady] = await Promise.all([
+      waitForBackend(20_000),
+      waitForFrontend(20_000),
+    ]);
+    if (!backendReady) {
+      // B5: surface backend startup failure instead of navigating into a
+      // doomed app window.
+      const exitInfo = getBackendExitInfo();
+      if (exitInfo && exitInfo.code !== 0) {
+        const tail = tailLogFile(50);
+        dialog.showErrorBox(
+          "Mike couldn't start",
+          `The backend exited with code ${exitInfo.code}.\n\nLast log lines:\n\n${tail}`,
+        );
+        // tear down the session so the user can retry from the lock screen
+        sessionJwt = null;
+        sessionSecret = null;
+        stopFrontend();
+        if (win) loadLockScreen(win);
+        return { ok: false, error: "Backend failed to start." };
+      }
+      console.warn("[unlock] backend slow to become ready; continuing.");
+    }
+    if (!frontendReady) {
+      console.warn("[unlock] frontend slow to become ready; continuing.");
+    }
+    if (win) loadMainApp(win);
+    return { ok: true };
+  } catch (err) {
+    const msg = (err as Error).message ?? String(err);
+    console.error("[unlock] handler threw:", err);
+    return { ok: false, error: msg };
+  } finally {
+    unlocking = false;
+  }
+});
+
+ipcMain.handle("mike:signOut", async () => {
+  // B6: tear down the session, kill children, return to lock screen.
+  sessionJwt = null;
+  sessionSecret = null;
+  stopBackend();
+  stopFrontend();
+  if (win) loadLockScreen(win);
   return { ok: true };
 });
 
@@ -154,15 +321,58 @@ ipcMain.handle("mike:getUser", () => {
 });
 ipcMain.handle("mike:getApiPort", () => getBackendPort());
 
+// CSP for the renderer. Allows: own scripts/styles, inline styles (Next.js
+// + Tailwind ship them), images from local sources + data URIs, fetch/ws
+// to the backend on localhost. Blocks: external scripts, plugins, frames,
+// remote images. LLM-rendered markdown is the realistic injection vector;
+// this header closes a large class of those without breaking the app.
+const RENDERER_CSP = [
+  "default-src 'self' http://localhost:* ws://localhost:*",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*",
+  "style-src 'self' 'unsafe-inline' http://localhost:*",
+  "img-src 'self' data: blob: http://localhost:*",
+  "font-src 'self' data: http://localhost:*",
+  "connect-src 'self' http://localhost:* ws://localhost:* https://api.anthropic.com https://generativelanguage.googleapis.com",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+].join("; ");
+
+function installCsp(): void {
+  // CSP is enforced on packaged builds only. Next.js dev mode (Turbopack)
+  // and React Fast Refresh make extra fetches to undocumented endpoints
+  // that are awkward to whitelist; in dev we trust the local toolchain.
+  // The packaged build serves Next.js standalone output where the URL
+  // surface is fixed and the CSP can be locked down.
+  if (!app.isPackaged) return;
+  session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
+    const headers = { ...details.responseHeaders };
+    // Strip any upstream CSP so ours is the one that applies.
+    for (const k of Object.keys(headers)) {
+      if (k.toLowerCase() === "content-security-policy") delete headers[k];
+    }
+    headers["Content-Security-Policy"] = [RENDERER_CSP];
+    cb({ responseHeaders: headers });
+  });
+}
+
 app.whenReady().then(() => {
+  installCsp();
   const cfg = readConfig();
   if (isWorkspaceValid(cfg.lastWorkspace)) {
     currentWorkspace = cfg.lastWorkspace!;
+    try {
+      const lp = initLogging(currentWorkspace);
+      console.log(`[startup] logging to ${lp}`);
+    } catch (err) {
+      console.warn("[startup] failed to init log file:", err);
+    }
   }
   win = createWindow();
   loadLockScreen(win);
   win.on("closed", () => {
     win = null;
+    lockWebContents = null;
   });
 });
 
@@ -175,6 +385,7 @@ app.on("window-all-closed", () => {
 app.on("before-quit", () => {
   stopBackend();
   stopFrontend();
+  closeLogging();
 });
 
 app.on("activate", () => {

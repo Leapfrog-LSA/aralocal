@@ -1,8 +1,19 @@
-import "dotenv/config";
-import express from "express";
+import dotenv from "dotenv";
+// Under Electron the main process injects FRONTEND_URL, JWT_SECRET, etc.
+// directly into our env (signalled by WORKSPACE_PATH). Loading a .env from
+// disk in that mode would let a stray file next to the binary override
+// what Electron set. Only load .env in standalone dev runs.
+if (!process.env.WORKSPACE_PATH) {
+  dotenv.config();
+}
+import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
+import * as fs from "fs";
+import * as path from "path";
 import { runMigrations } from "./db/migrate";
 import { probeLibreOffice } from "./lib/libreofficeStatus";
+import { setServerPort } from "./lib/serverPort";
+import { MAX_UPLOAD_SIZE_BYTES } from "./lib/upload";
 import { chatRouter } from "./routes/chat";
 import { projectsRouter } from "./routes/projects";
 import { projectChatRouter } from "./routes/projectChat";
@@ -15,7 +26,6 @@ import { authRouter } from "./routes/auth";
 import { filesRouter } from "./routes/files";
 
 const app = express();
-const PORT = process.env.PORT ?? 3001;
 
 app.use(
   cors({
@@ -24,7 +34,9 @@ app.use(
   }),
 );
 
-app.use(express.json({ limit: "50mb" }));
+// Match the multer upload cap (100 MB) so JSON-bodied requests carrying
+// a file payload don't 413 below the multipart cap.
+app.use(express.json({ limit: MAX_UPLOAD_SIZE_BYTES }));
 
 app.use("/chat", chatRouter);
 app.use("/projects", projectsRouter);
@@ -40,6 +52,27 @@ app.use("/files", filesRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
+// Global error handler — must be the last app.use(). Prevents Express's
+// default handler from leaking stack traces into the response body. Errors
+// are still logged in full server-side.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("[error-handler]", err);
+  if (res.headersSent) return;
+  // Surface common client errors with their original status, suppress
+  // everything else as 500 with a generic message.
+  if (
+    err instanceof SyntaxError &&
+    "status" in err &&
+    typeof (err as { status: unknown }).status === "number" &&
+    (err as { status: number }).status === 400
+  ) {
+    res.status(400).json({ detail: "Malformed JSON in request body" });
+    return;
+  }
+  res.status(500).json({ detail: "Internal server error" });
+});
+
 if (process.env.WORKSPACE_PATH) {
   try {
     runMigrations();
@@ -49,9 +82,6 @@ if (process.env.WORKSPACE_PATH) {
   }
 }
 
-// Warm the LibreOffice probe in the background so the first /capabilities
-// request returns the cached result. Failure is fine — the probe just reports
-// unavailable and the frontend shows the install banner when relevant.
 probeLibreOffice().then((p) => {
   console.log(
     p.available
@@ -60,6 +90,31 @@ probeLibreOffice().then((p) => {
   );
 });
 
-app.listen(PORT, () => {
-  console.log(`Mike backend running on port ${PORT}`);
+// C3: bind to the OS-assigned port (PORT=0 from the spawning Electron main),
+// then publish the assigned port to <workspace>/.mike/runtime.json so the
+// renderer can discover it. Falls back to 3001 if PORT is set explicitly
+// (useful for `npm --prefix backend run dev`).
+const requestedPort = Number(process.env.PORT ?? 3001);
+
+const server = app.listen(requestedPort, "127.0.0.1", () => {
+  const addr = server.address();
+  const actualPort =
+    typeof addr === "object" && addr ? addr.port : requestedPort;
+  setServerPort(actualPort);
+  console.log(`Mike backend running on port ${actualPort}`);
+  if (process.env.WORKSPACE_PATH) {
+    try {
+      const runtimeDir = path.join(process.env.WORKSPACE_PATH, ".mike");
+      fs.mkdirSync(runtimeDir, { recursive: true });
+      const tmp = path.join(runtimeDir, `runtime.json.${process.pid}.tmp`);
+      const dest = path.join(runtimeDir, "runtime.json");
+      fs.writeFileSync(
+        tmp,
+        JSON.stringify({ port: actualPort, pid: process.pid }, null, 2),
+      );
+      fs.renameSync(tmp, dest);
+    } catch (err) {
+      console.warn("[startup] failed to write runtime.json:", err);
+    }
+  }
 });

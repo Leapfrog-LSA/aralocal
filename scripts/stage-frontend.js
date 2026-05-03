@@ -1,20 +1,43 @@
-// Next.js standalone output places .next/static and public/ alongside server.js
-// at runtime — but `next build --output standalone` only copies server.js +
-// hoisted node_modules, not the static assets. Copy them in so the spawned
-// server can serve them.
+// Next.js standalone output drops a self-contained Node server, but doesn't
+// include the static assets (.next/static) or public/ alongside it. We have
+// to copy those in so the spawned server can serve them.
 //
-// See: https://nextjs.org/docs/app/api-reference/next-config-js/output#caveats
+// In monorepo-shaped projects, Next.js relocates server.js to preserve the
+// path from the trace root: it can land at either
+//   .next/standalone/server.js          (single-package projects)
+// or
+//   .next/standalone/<frontend>/server.js  (when other node_modules trees exist)
+// We probe both and stage assets next to whichever exists.
 
 const fs = require("fs");
 const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const standalone = path.join(root, "frontend", ".next", "standalone");
-const nextDir = path.join(standalone, ".next");
 const publicSrc = path.join(root, "frontend", "public");
-const publicDest = path.join(standalone, "public");
 const staticSrc = path.join(root, "frontend", ".next", "static");
-const staticDest = path.join(nextDir, "static");
+
+if (!fs.existsSync(standalone)) {
+  console.log(
+    "[stage-frontend] standalone dir not found — did `next build` run?",
+  );
+  process.exit(0);
+}
+
+const candidates = [
+  path.join(standalone, "server.js"),
+  path.join(standalone, "frontend", "server.js"),
+];
+const serverEntry = candidates.find((p) => fs.existsSync(p));
+if (!serverEntry) {
+  console.error(
+    "[stage-frontend] could not find server.js in:\n  " +
+      candidates.join("\n  "),
+  );
+  process.exit(1);
+}
+const serverDir = path.dirname(serverEntry);
+console.log(`[stage-frontend] server.js at ${serverEntry}`);
 
 function copyDir(src, dest) {
   if (!fs.existsSync(src)) return;
@@ -27,13 +50,6 @@ function copyDir(src, dest) {
   }
 }
 
-if (!fs.existsSync(standalone)) {
-  console.log(
-    "[stage-frontend] standalone dir not found — did `next build` run?",
-  );
-  process.exit(0);
-}
-
-copyDir(publicSrc, publicDest);
-copyDir(staticSrc, staticDest);
-console.log("[stage-frontend] staged public/ and .next/static into standalone/");
+copyDir(publicSrc, path.join(serverDir, "public"));
+copyDir(staticSrc, path.join(serverDir, ".next", "static"));
+console.log(`[stage-frontend] staged public/ and .next/static into ${serverDir}`);

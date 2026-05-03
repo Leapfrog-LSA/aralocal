@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { getApiBase } from "@/app/lib/mikeApi";
 
 interface UserProfile {
     displayName: string | null;
@@ -37,15 +38,11 @@ interface UserProfileContextType {
         value: string | null,
     ) => Promise<boolean>;
     reloadProfile: () => Promise<void>;
-    incrementMessageCredits: () => Promise<boolean>;
 }
 
 const UserProfileContext = createContext<UserProfileContextType | undefined>(
     undefined,
 );
-
-const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
 // Local desktop build: credit metering is meaningless (no SaaS billing).
 // Keep the field set high so all UI paths gating on it pass.
@@ -89,7 +86,7 @@ async function authHeaders(): Promise<Record<string, string>> {
 
 async function fetchProfile(): Promise<ServerProfile | null> {
     const headers = await authHeaders();
-    const resp = await fetch(`${API_BASE}/user/profile`, { headers });
+    const resp = await fetch(`${await getApiBase()}/user/profile`, { headers });
     if (!resp.ok) return null;
     return (await resp.json()) as ServerProfile;
 }
@@ -98,7 +95,7 @@ async function patchProfile(
     update: Partial<ServerProfile>,
 ): Promise<ServerProfile | null> {
     const headers = await authHeaders();
-    const resp = await fetch(`${API_BASE}/user/profile`, {
+    const resp = await fetch(`${await getApiBase()}/user/profile`, {
         method: "PATCH",
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify(update),
@@ -178,17 +175,6 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         await loadProfile();
     }, [loadProfile]);
 
-    const incrementMessageCredits = useCallback(async (): Promise<boolean> => {
-        // Local build is unmetered — credits aren't enforced. Keep the
-        // local counter in sync with the server in case anything reads it.
-        if (!profile) return false;
-        const next = profile.messageCreditsUsed + 1;
-        const updated = await patchProfile({ message_credits_used: next });
-        if (!updated) return false;
-        setProfile(toClientProfile(updated));
-        return true;
-    }, [profile]);
-
     return (
         <UserProfileContext.Provider
             value={{
@@ -199,7 +185,6 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
                 updateModelPreference,
                 updateApiKey,
                 reloadProfile,
-                incrementMessageCredits,
             }}
         >
             {children}

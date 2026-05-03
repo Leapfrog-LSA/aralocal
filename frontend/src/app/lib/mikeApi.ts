@@ -34,8 +34,35 @@ interface ServerChatDetailOut {
     messages: ServerMessage[];
 }
 
-const API_BASE =
+// C3: backend binds to an OS-assigned port. Read it via the Electron preload
+// (`window.mike.getApiPort()`), cache for the session — port doesn't change
+// without a relaunch. The fallback keeps `next dev` working in a browser.
+const FALLBACK_API_BASE =
     process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+
+let cachedApiBase: string | null = null;
+
+export async function getApiBase(): Promise<string> {
+    if (cachedApiBase) return cachedApiBase;
+    if (typeof window !== "undefined") {
+        const bridge = window.mike as
+            | { getApiPort?: () => Promise<number> }
+            | undefined;
+        if (bridge?.getApiPort) {
+            try {
+                const port = await bridge.getApiPort();
+                if (port && Number.isFinite(port)) {
+                    cachedApiBase = `http://localhost:${port}`;
+                    return cachedApiBase;
+                }
+            } catch {
+                // fall through to the env-configured base
+            }
+        }
+    }
+    cachedApiBase = FALLBACK_API_BASE;
+    return cachedApiBase;
+}
 
 async function getAuthHeader(): Promise<Record<string, string>> {
     const {
@@ -48,7 +75,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
     const authHeaders = await getAuthHeader();
     const { headers: initHeaders, ...restInit } = init ?? {};
-    const response = await fetch(`${API_BASE}${path}`, {
+    const response = await fetch(`${await getApiBase()}${path}`, {
         cache: "no-store",
         ...restInit,
         headers: {
@@ -249,7 +276,7 @@ export async function uploadDocumentVersion(
     form.append("file", file);
     if (displayName) form.append("display_name", displayName);
     const response = await fetch(
-        `${API_BASE}/single-documents/${documentId}/versions`,
+        `${await getApiBase()}/single-documents/${documentId}/versions`,
         {
             method: "POST",
             headers: { ...authHeaders },
@@ -283,7 +310,7 @@ export async function uploadProjectDocument(
     const form = new FormData();
     form.append("file", file);
     const response = await fetch(
-        `${API_BASE}/projects/${projectId}/documents`,
+        `${await getApiBase()}/projects/${projectId}/documents`,
         {
             method: "POST",
             headers: { ...authHeaders },
@@ -300,7 +327,7 @@ export async function uploadStandaloneDocument(
     const authHeaders = await getAuthHeader();
     const form = new FormData();
     form.append("file", file);
-    const response = await fetch(`${API_BASE}/single-documents`, {
+    const response = await fetch(`${await getApiBase()}/single-documents`, {
         method: "POST",
         headers: { ...authHeaders },
         body: form,
@@ -331,7 +358,7 @@ export async function downloadDocumentsZip(
     documentIds: string[],
 ): Promise<Blob> {
     const authHeaders = await getAuthHeader();
-    const response = await fetch(`${API_BASE}/single-documents/download-zip`, {
+    const response = await fetch(`${await getApiBase()}/single-documents/download-zip`, {
         method: "POST",
         cache: "no-store",
         headers: {
@@ -434,7 +461,7 @@ export async function streamChat(payload: {
 }): Promise<Response> {
     const { signal, ...body } = payload;
     const authHeaders = await getAuthHeader();
-    return fetch(`${API_BASE}/chat`, {
+    return fetch(`${await getApiBase()}/chat`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -464,7 +491,7 @@ export async function streamProjectChat(payload: {
 }): Promise<Response> {
     const { projectId, signal, ...body } = payload;
     const authHeaders = await getAuthHeader();
-    return fetch(`${API_BASE}/projects/${projectId}/chat`, {
+    return fetch(`${await getApiBase()}/projects/${projectId}/chat`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -580,7 +607,7 @@ export async function streamTabularGeneration(
     reviewId: string,
 ): Promise<Response> {
     const authHeaders = await getAuthHeader();
-    return fetch(`${API_BASE}/tabular-review/${reviewId}/generate`, {
+    return fetch(`${await getApiBase()}/tabular-review/${reviewId}/generate`, {
         method: "POST",
         headers: { ...authHeaders },
     });
@@ -594,7 +621,7 @@ export async function streamTabularChat(
     context?: { reviewTitle?: string | null; projectName?: string | null },
 ): Promise<Response> {
     const authHeaders = await getAuthHeader();
-    return fetch(`${API_BASE}/tabular-review/${reviewId}/chat`, {
+    return fetch(`${await getApiBase()}/tabular-review/${reviewId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({

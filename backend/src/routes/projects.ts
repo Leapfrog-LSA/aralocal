@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { createServerSupabase } from "../lib/supabase";
-import { createClient } from "@supabase/supabase-js";
 import {
   attachActiveVersionPaths,
   attachLatestVersionNumbers,
@@ -555,8 +554,14 @@ projectsRouter.delete("/:projectId/folders/:folderId", requireAuth, async (req, 
   const access = await checkProjectAccess(projectId, userId, userEmail, db);
   if (!access.ok) return void res.status(404).json({ detail: "Project not found" });
 
-  // Move direct documents to root before cascade-deleting subfolders
-  await db.from("documents").update({ folder_id: null }).eq("folder_id", folderId);
+  // Move direct documents to root before cascade-deleting subfolders.
+  // Scope by project_id to avoid touching documents in other projects on
+  // the off chance two folder IDs collide (defence-in-depth, post-RLS).
+  await db
+    .from("documents")
+    .update({ folder_id: null })
+    .eq("folder_id", folderId)
+    .eq("project_id", projectId);
 
   const { error } = await db.from("project_subfolders")
     .delete().eq("id", folderId).eq("project_id", projectId);

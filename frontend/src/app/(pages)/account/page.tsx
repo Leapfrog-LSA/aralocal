@@ -188,20 +188,11 @@ export default function AccountPage() {
                             </p>
                         ) : capabilities ? (
                             <p className="text-sm text-amber-700">
-                                Not installed.{" "}
-                                <a
-                                    href={
-                                        capabilities.libreoffice.install_url ??
-                                        "https://www.libreoffice.org/download/download/"
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline hover:text-amber-900"
-                                >
-                                    Download LibreOffice
-                                </a>{" "}
-                                — without it, Word documents still upload but
-                                can&rsquo;t be previewed as PDF in-app.
+                                Not detected. LibreOffice ships bundled with
+                                Mike — if this message persists, the install
+                                may be incomplete. Try reinstalling Mike.
+                                Word uploads still work for text, but PDF
+                                preview is unavailable.
                             </p>
                         ) : (
                             <p className="text-sm text-gray-400">Checking…</p>

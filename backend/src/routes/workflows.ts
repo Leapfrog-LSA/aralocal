@@ -1,14 +1,13 @@
 import { Router } from "express";
-import { createClient } from "@supabase/supabase-js";
 import { requireAuth } from "../middleware/auth";
 import { createServerSupabase } from "../lib/supabase";
+import { sharedClient } from "../db/supabaseShim";
 
 function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.SUPABASE_SECRET_KEY ?? "",
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
+  // In the local desktop build, the shim's auth.admin.listUsers returns the
+  // single local user — sharing isn't a real workflow here, but this keeps
+  // the code path alive instead of throwing.
+  return sharedClient;
 }
 
 export const workflowsRouter = Router();

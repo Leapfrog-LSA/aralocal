@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface TabDef {
@@ -31,17 +30,9 @@ export default function AccountLayout({
         }
     }, [isAuthenticated, authLoading, router]);
 
-    if (authLoading) {
-        return (
-            <div className="h-dvh bg-white flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
-        );
-    }
-
-    if (!isAuthenticated) {
-        return null;
-    }
+    // Spinner suppressed to avoid double-loading flash after unlock.
+    // See the parent (pages)/layout.tsx for the same change.
+    if (authLoading || !isAuthenticated) return null;
 
     return (
         <div className="flex flex-col h-full md:overflow-y-auto px-6 py-6 md:py-10">

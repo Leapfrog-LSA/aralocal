@@ -17,6 +17,7 @@ import type {
 import { EditCard, applyOptimisticResolution } from "./EditCard";
 import { PreResponseWrapper } from "../shared/PreResponseWrapper";
 import { supabase } from "@/lib/supabase";
+import { getApiBase } from "@/app/lib/mikeApi";
 
 /**
  * Card rendered above the per-edit EditCards when a message produced
@@ -79,8 +80,7 @@ function BulkEditActions({
                 data: { session },
             } = await supabase.auth.getSession();
             const token = session?.access_token;
-            const apiBase =
-                process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+            const apiBase = await getApiBase();
 
             // Sequential so the per-document version counter advances in a
             // predictable order and the viewer doesn't race between bumps.
@@ -605,10 +605,20 @@ function DocDownloadBlock({
     // Only backend-relative URLs are accepted. The download fetch carries
     // the user's bearer token, so any absolute URL from tool output is
     // refused to keep the token from leaking off-origin.
-    const API_BASE =
-        process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
     const isSafeHref = download_url.startsWith("/");
-    const href = isSafeHref ? `${API_BASE}${download_url}` : null;
+    const [resolvedApiBase, setResolvedApiBase] = useState<string | null>(null);
+    useEffect(() => {
+        if (!isSafeHref) return;
+        let mounted = true;
+        getApiBase().then((b) => {
+            if (mounted) setResolvedApiBase(b);
+        });
+        return () => {
+            mounted = false;
+        };
+    }, [isSafeHref]);
+    const href =
+        isSafeHref && resolvedApiBase ? `${resolvedApiBase}${download_url}` : null;
     const [busy, setBusy] = useState(false);
 
     const handleDownload = async (e?: {
@@ -936,10 +946,6 @@ function MarkdownContent({
                                 return (
                                     <button
                                         onClick={() => {
-                                            console.log(
-                                                "[AssistantMessage] citation clicked",
-                                                annotation,
-                                            );
                                             onCitationClick?.(annotation);
                                         }}
                                         className="mx-0.5 inline-flex items-center justify-center rounded-full w-4 h-4 text-[10px] font-medium transition-colors align-super bg-gray-100 text-gray-900 hover:bg-gray-200"
@@ -1089,7 +1095,6 @@ export function AssistantMessage({
         versionId: string | null;
         downloadUrl: string | null;
     }) => {
-        console.log("[AssistantMessage] handleEditResolved", args);
         if (args.downloadUrl) {
             setResolvedOverrides((prev) => ({
                 ...prev,

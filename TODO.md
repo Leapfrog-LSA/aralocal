@@ -35,3 +35,33 @@ These all come from transitive deps inside `electron-builder` / `electron-rebuil
 ## Cross-platform
 
 - **Windows-only NSIS installer** in v1. macOS / Linux targets are an `electron-builder` config addition (`"mac"` and `"linux"` blocks). Not yet tested.
+
+## From CODE-REVIEW-0.2.0.md (Critical fixes landed; Important deferred to 0.2.1)
+
+Critical (C1–C5) shipped: download-token signing secret, JWT alg/typ check + exp type-guard, sandbox flip, raw-stream log gate, chat_messages.workflow column mismatch.
+
+Deferred Important items (full list in `CODE-REVIEW-0.2.0.md`):
+
+- ~~CSP header on the renderer window~~ — landed (`electron/main.ts:installCsp`)
+- ~~Disable DevTools in production builds (or at least on the lock screen)~~ — landed (`electron/main.ts` before-input gate + devtools-opened slam-shut)
+- ~~HMAC-protect or migrate `auth-state.json` lockout state~~ — documented as a UX rate-limit only (`DECISIONS.md` 2026-05-03)
+- ~~`electron/backend.ts` dev spawn uses `shell: true`~~ — investigated and **left as-is**. Reverted the `cmd.exe /c` form because it broke the dev backend silently (child exits before stdout is wired). All argv values here are static literals — no user input flows in — so the "future shell-injection footgun" risk doesn't bite. Production spawn uses `process.execPath` directly with no shell.
+- ~~`electron/workspace.ts` `pickWorkspace` should `realpath` and reject install-dir-internal locations~~ — landed (`isInsideInstallTree` + `fs.realpathSync`)
+- `electron/backend.ts` `getBackendPort` falls back to 3001 instead of erroring
+- ~~Refuse `import "dotenv/config"` in the backend when packaged~~ — landed (gated on `WORKSPACE_PATH`)
+- ~~`documents.ts:90` DELETE is the lone route that doesn't belt-and-braces filter by `user_id`~~ — landed
+- ~~`projects.ts:558` folder-cleanup UPDATE not scoped to `project_id`~~ — landed
+- Widen `migrate.ts` regex or move the Postgres one-shot schema out of `migrations/` (silent skip risk)
+- Set `synchronous = NORMAL` to pair with WAL
+- ~~Add a global Express error handler; align body limit (50mb) with upload limit (100mb)~~ — landed (handler returns generic 500, body limit now matches `MAX_UPLOAD_SIZE_BYTES`)
+- ~~Use `127.0.0.1` instead of `localhost` in `getSignedUrl`~~ — landed
+- ~~LibreOffice convert: 60s timeout + max output size~~ — landed (60s timeout, 200MB cap) cap
+- `JWT_SECRET` length check at startup (≥32 bytes hex)
+- ~~Frontend: drop dead `incrementMessageCredits` PATCH~~ — landed (function deleted; no callers in `frontend/src`, contrary to reviewer's claim it fired per turn)
+- ~~Frontend: cache JWT at module scope rather than IPC-fetch on every API call~~ — landed (`frontend/src/lib/supabase.ts` cachedBridge, cleared in `signOut`)
+- Frontend: `useCapabilities` cache never refreshes (UI lies if LO installed mid-session — though we now bundle, so lower urgency)
+- Pin LibreOffice SHA in `fetch-libreoffice.js` source instead of fetching the sidecar same-channel as the MSI
+- `stage-backend.js` `--no-package-lock` makes installer non-deterministic; check in a separate dist-bundle lockfile before v1.0
+- ~~Cross-check `tabular_model` (snake) vs `tabularModel` (camel) field name~~ — verified non-issue (backend column `tabular_model`, frontend reads `p?.tabular_model` — match)
+
+Plus minors listed in CODE-REVIEW-0.2.0.md.

@@ -1,6 +1,11 @@
 import * as fs from "fs";
 import * as crypto from "crypto";
-import { authFilePath } from "./workspace";
+import { promisify } from "util";
+import {
+  authFilePath,
+  authStateFilePath,
+  atomicWriteFileSync,
+} from "./workspace";
 
 interface AuthFile {
   version: 1;
@@ -13,15 +18,45 @@ interface AuthFile {
   keylen: number;
 }
 
-const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
+interface AuthState {
+  version: 1;
+  failedAttempts: number;
+  lockoutUntil: number;
+}
 
-function deriveKey(password: string, saltB64: string): Buffer {
+// Tuned for ~400 ms per derive on a modern laptop. Higher than the original
+// N=16384 (~50 ms) to slow offline brute-force against a stolen workspace.
+// scrypt's memory cost is ~128 * N * r bytes ≈ 128 MB at these params, so
+// maxmem must be raised accordingly.
+const SCRYPT_PARAMS = { N: 131072, r: 8, p: 1, keylen: 64 } as const;
+const SCRYPT_MAXMEM = 256 * 1024 * 1024;
+
+const MIN_PASSWORD_LENGTH = 10;
+
+const FAILED_ATTEMPT_LIMIT = 5;
+const LOCKOUT_MS = 30_000;
+
+const scryptAsync = promisify(
+  (
+    pw: crypto.BinaryLike,
+    salt: crypto.BinaryLike,
+    keylen: number,
+    options: crypto.ScryptOptions,
+    cb: (err: Error | null, key: Buffer) => void,
+  ) => crypto.scrypt(pw, salt, keylen, options, cb),
+);
+
+async function deriveKey(
+  password: string,
+  saltB64: string,
+  params: { N: number; r: number; p: number; keylen: number } = SCRYPT_PARAMS,
+): Promise<Buffer> {
   const salt = Buffer.from(saltB64, "base64");
-  return crypto.scryptSync(password, salt, SCRYPT_PARAMS.keylen, {
-    N: SCRYPT_PARAMS.N,
-    r: SCRYPT_PARAMS.r,
-    p: SCRYPT_PARAMS.p,
-    maxmem: 64 * 1024 * 1024,
+  return scryptAsync(password, salt, params.keylen, {
+    N: params.N,
+    r: params.r,
+    p: params.p,
+    maxmem: SCRYPT_MAXMEM,
   });
 }
 
@@ -33,12 +68,19 @@ export function hasPassword(workspace: string): boolean {
   }
 }
 
-export function setPassword(workspace: string, password: string): void {
-  if (!password || password.length < 6) {
-    throw new Error("Password must be at least 6 characters.");
+export const PASSWORD_MIN_LENGTH = MIN_PASSWORD_LENGTH;
+
+export async function setPassword(
+  workspace: string,
+  password: string,
+): Promise<void> {
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+    );
   }
   const salt = crypto.randomBytes(16);
-  const hash = deriveKey(password, salt.toString("base64"));
+  const hash = await deriveKey(password, salt.toString("base64"));
   const file: AuthFile = {
     version: 1,
     algo: "scrypt",
@@ -46,51 +88,126 @@ export function setPassword(workspace: string, password: string): void {
     hash: hash.toString("base64"),
     ...SCRYPT_PARAMS,
   };
-  fs.writeFileSync(authFilePath(workspace), JSON.stringify(file, null, 2), {
-    mode: 0o600,
-  });
+  atomicWriteFileSync(
+    authFilePath(workspace),
+    JSON.stringify(file, null, 2),
+    { mode: 0o600 },
+  );
 }
 
-export function verifyPassword(workspace: string, password: string): boolean {
+/**
+ * Verify the password against the stored hash. If the stored hash uses
+ * older scrypt parameters than `SCRYPT_PARAMS`, transparently re-derive
+ * with the new params and rewrite `auth.json` (lazy upgrade).
+ *
+ * Returns true on match, false on mismatch or any read/parse failure.
+ */
+export async function verifyPassword(
+  workspace: string,
+  password: string,
+): Promise<boolean> {
   let raw: string;
   try {
     raw = fs.readFileSync(authFilePath(workspace), "utf8");
   } catch {
     return false;
   }
-  const file = JSON.parse(raw) as AuthFile;
-  const candidate = deriveKey(password, file.salt);
+  let file: AuthFile;
+  try {
+    file = JSON.parse(raw) as AuthFile;
+  } catch {
+    return false;
+  }
+  const candidate = await deriveKey(password, file.salt, {
+    N: file.N,
+    r: file.r,
+    p: file.p,
+    keylen: file.keylen,
+  });
   const stored = Buffer.from(file.hash, "base64");
   if (candidate.length !== stored.length) return false;
-  return crypto.timingSafeEqual(candidate, stored);
+  if (!crypto.timingSafeEqual(candidate, stored)) return false;
+
+  // Match — opportunistically upgrade to current scrypt parameters.
+  const needsUpgrade =
+    file.N !== SCRYPT_PARAMS.N ||
+    file.r !== SCRYPT_PARAMS.r ||
+    file.p !== SCRYPT_PARAMS.p ||
+    file.keylen !== SCRYPT_PARAMS.keylen;
+  if (needsUpgrade) {
+    try {
+      await setPassword(workspace, password);
+      console.log(
+        `[auth] migrated password hash to N=${SCRYPT_PARAMS.N} for ${authFilePath(
+          workspace,
+        )}`,
+      );
+    } catch (err) {
+      console.warn("[auth] password hash upgrade failed:", err);
+    }
+  }
+  return true;
 }
 
-const FAILED_ATTEMPT_LIMIT = 5;
-const LOCKOUT_MS = 30_000;
+// ---------------------------------------------------------------------------
+// Lockout state — persisted per workspace
+// ---------------------------------------------------------------------------
 
-let failedAttempts = 0;
-let lockoutUntil = 0;
+function readState(workspace: string): AuthState {
+  try {
+    const raw = fs.readFileSync(authStateFilePath(workspace), "utf8");
+    const parsed = JSON.parse(raw) as Partial<AuthState>;
+    return {
+      version: 1,
+      failedAttempts: Number(parsed.failedAttempts ?? 0) || 0,
+      lockoutUntil: Number(parsed.lockoutUntil ?? 0) || 0,
+    };
+  } catch {
+    return { version: 1, failedAttempts: 0, lockoutUntil: 0 };
+  }
+}
 
-export function isLockedOut(): { locked: boolean; secondsRemaining: number } {
+function writeState(workspace: string, state: AuthState): void {
+  try {
+    atomicWriteFileSync(
+      authStateFilePath(workspace),
+      JSON.stringify(state, null, 2),
+      { mode: 0o600 },
+    );
+  } catch (err) {
+    console.warn("[auth] failed to persist auth-state:", err);
+  }
+}
+
+export function isLockedOut(workspace: string): {
+  locked: boolean;
+  secondsRemaining: number;
+} {
+  const state = readState(workspace);
   const now = Date.now();
-  if (now < lockoutUntil) {
+  if (now < state.lockoutUntil) {
     return {
       locked: true,
-      secondsRemaining: Math.ceil((lockoutUntil - now) / 1000),
+      secondsRemaining: Math.ceil((state.lockoutUntil - now) / 1000),
     };
   }
   return { locked: false, secondsRemaining: 0 };
 }
 
-export function recordFailedAttempt(): void {
-  failedAttempts++;
-  if (failedAttempts >= FAILED_ATTEMPT_LIMIT) {
-    lockoutUntil = Date.now() + LOCKOUT_MS;
-    failedAttempts = 0;
+export function recordFailedAttempt(workspace: string): void {
+  const state = readState(workspace);
+  state.failedAttempts++;
+  if (state.failedAttempts >= FAILED_ATTEMPT_LIMIT) {
+    state.lockoutUntil = Date.now() + LOCKOUT_MS;
+    state.failedAttempts = 0;
   }
+  writeState(workspace, state);
 }
 
-export function recordSuccessfulAttempt(): void {
-  failedAttempts = 0;
-  lockoutUntil = 0;
+export function recordSuccessfulAttempt(workspace: string): void {
+  writeState(workspace, {
+    version: 1,
+    failedAttempts: 0,
+    lockoutUntil: 0,
+  });
 }

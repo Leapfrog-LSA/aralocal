@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { getApiBase } from "@/app/lib/mikeApi";
 
 export interface FetchDocxResult {
     bytes: ArrayBuffer | null;
@@ -17,7 +18,7 @@ export interface FetchDocxResult {
 // unchanged. Promises are cached too, so concurrent mounts for the same
 // key share a single in-flight request.
 const bytesCache = new Map<string, ArrayBuffer>();
-const inFlight = new Map<string, Promise<ArrayBuffer>>();
+const inFlight = new Map<string, Promise<{ buf: ArrayBuffer; url: string }>>();
 
 function cacheKey(
     documentId: string,
@@ -47,14 +48,6 @@ export function useFetchDocxBytes(
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    console.log("[useFetchDocxBytes] init", {
-        documentId,
-        versionId,
-        refetchKey,
-        initialKey,
-        cacheHit: initialKey ? bytesCache.has(initialKey) : null,
-    });
-
     useEffect(() => {
         if (!documentId) {
             setBytes(null);
@@ -63,18 +56,22 @@ export function useFetchDocxBytes(
         }
 
         const key = cacheKey(documentId, versionId, refetchKey);
-        const apiBase =
-            process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
         const qs = versionId
             ? `?version_id=${encodeURIComponent(versionId)}`
             : "";
-        const url = `${apiBase}/single-documents/${documentId}/docx${qs}`;
 
         // Cache hit: reuse bytes synchronously, no network, no spinner.
         const cached = bytesCache.get(key);
         if (cached) {
             setBytes(cached);
-            setDownloadUrl(url);
+            // Resolve url asynchronously after we've already shown the cached
+            // bytes — avoids blocking the synchronous cache hit on the IPC
+            // round-trip to discover the backend port.
+            void getApiBase().then((apiBase) =>
+                setDownloadUrl(
+                    `${apiBase}/single-documents/${documentId}/docx${qs}`,
+                ),
+            );
             setLoading(false);
             setError(null);
             return;
@@ -87,27 +84,27 @@ export function useFetchDocxBytes(
         const pending =
             inFlight.get(key) ??
             (async () => {
+                const apiBase = await getApiBase();
+                const url = `${apiBase}/single-documents/${documentId}/docx${qs}`;
                 const {
                     data: { session },
                 } = await supabase.auth.getSession();
                 const token = session?.access_token;
-                // Stream bytes through the backend (avoids CORS on R2
-                // signed URLs).
                 const bin = await fetch(url, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
                 if (!bin.ok) throw new Error(`HTTP ${bin.status}`);
                 const buf = await bin.arrayBuffer();
                 bytesCache.set(key, buf);
-                return buf;
+                return { buf, url };
             })();
         if (!inFlight.has(key)) inFlight.set(key, pending);
 
         pending
-            .then((buf) => {
+            .then((result) => {
                 if (cancelled) return;
-                setBytes(buf);
-                setDownloadUrl(url);
+                setBytes(result.buf);
+                setDownloadUrl(result.url);
             })
             .catch((e: unknown) => {
                 if (cancelled) return;

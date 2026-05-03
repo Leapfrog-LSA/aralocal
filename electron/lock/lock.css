@@ -113,9 +113,15 @@ button.primary:disabled {
   color: #b3b3bd;
   font-size: 13px;
   min-height: 1.4em;
-  display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Without this, .status { display: flex } above wins over the UA
+   [hidden] { display: none } rule and the "Starting Mike…" spinner
+   shows from page load. Scope the flex layout to the visible state. */
+.status:not([hidden]) {
+  display: flex;
 }
 
 .spinner {

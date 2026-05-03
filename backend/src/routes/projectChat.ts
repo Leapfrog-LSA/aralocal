@@ -26,6 +26,7 @@ export const projectChatRouter = Router({ mergeParams: true });
 
 // POST /projects/:projectId/chat — streaming
 projectChatRouter.post("/", requireAuth, async (req, res) => {
+  try {
     const userId = res.locals.userId as string;
     const userEmail = res.locals.userEmail as string | undefined;
     const { projectId } = req.params;
@@ -85,7 +86,6 @@ projectChatRouter.post("/", requireAuth, async (req, res) => {
             role: "user",
             content: lastUser.content,
             files: lastUser.files ?? null,
-            workflow: lastUser.workflow ?? null,
         });
     }
 
@@ -198,4 +198,12 @@ projectChatRouter.post("/", requireAuth, async (req, res) => {
     } finally {
         res.end();
     }
+  } catch (err) {
+    console.error("[project-chat/stream] prologue threw:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ detail: "Internal error" });
+    } else {
+      try { res.end(); } catch { /* ignore */ }
+    }
+  }
 });

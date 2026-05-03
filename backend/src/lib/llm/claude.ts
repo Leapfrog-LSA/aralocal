@@ -10,10 +10,10 @@ import type {
 } from "./types";
 import { toClaudeTools } from "./tools";
 
-const RAW_STREAM_LOG_PATH = path.resolve(
-    process.cwd(),
-    "claude-raw-stream.log",
-);
+const RAW_STREAM_DEBUG = !!process.env.MIKE_DEBUG_RAW_STREAM;
+const RAW_STREAM_LOG_PATH = RAW_STREAM_DEBUG
+    ? path.resolve(process.cwd(), "claude-raw-stream.log")
+    : null;
 
 type ContentBlock =
     | { type: "text"; text: string }
@@ -80,11 +80,13 @@ export async function streamClaude(
 
         let sawThinking = false;
 
-        stream.on("streamEvent", (event) => {
-            const line = JSON.stringify(event);
-            console.log("[claude raw stream]", line);
-            fs.appendFile(RAW_STREAM_LOG_PATH, line + "\n", () => {});
-        });
+        if (RAW_STREAM_DEBUG && RAW_STREAM_LOG_PATH) {
+            stream.on("streamEvent", (event) => {
+                const line = JSON.stringify(event);
+                console.log("[claude raw stream]", line);
+                fs.appendFile(RAW_STREAM_LOG_PATH, line + "\n", () => {});
+            });
+        }
 
         stream.on("text", (delta) => {
             callbacks.onContentDelta?.(delta);

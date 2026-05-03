@@ -11,4 +11,7 @@ contextBridge.exposeInMainWorld("mike", {
   getToken: () => ipcRenderer.invoke("mike:getToken"),
   getUser: () => ipcRenderer.invoke("mike:getUser"),
   getApiPort: () => ipcRenderer.invoke("mike:getApiPort"),
+  signOut: () => ipcRenderer.invoke("mike:signOut"),
+  changePassword: (oldPassword, newPassword) =>
+    ipcRenderer.invoke("mike:changePassword", oldPassword, newPassword),
 });

@@ -78,3 +78,12 @@
 **Why:** Required by upstream license.
 **Trade-offs:** Cannot ship a closed-source variant.
 **Revisit if:** N/A (license is binding).
+
+---
+
+## 2026-05-03 — `auth-state.json` lockout state is a UX rate-limit, not an offline-attack defense
+**Chosen:** Persist the failed-attempts counter and lockout deadline in plaintext at `<workspace>/.mike/auth-state.json`. An attacker with filesystem access can edit or delete the file to reset the counter.
+**Alternatives:** HMAC the state file with a key derived from `auth.json`'s stored hash, so tampering invalidates the state and forces a wait; or keep the counter purely in memory (no persistence across launches).
+**Why:** The lockout exists to slow down an interactive human at the lock screen who has fat-fingered or is shoulder-surfing — not to defend against an offline brute-force attempt. The real defense against offline attack is `scrypt` with `N=131072, r=8` (~400 ms per derive, ~128 MB working set), which is configured in `electron/auth.ts`. An attacker who can read `auth.json` from disk can already attempt scrypt offline at their own pace; deleting `auth-state.json` doesn't speed that up. Adding HMAC machinery would suggest a security guarantee the file does not provide.
+**Trade-offs:** A user (or someone with shell access) can bypass the 30-second wait between tries by deleting the file. That is the documented behavior, not a bug.
+**Revisit if:** Lockout becomes an actual security control (e.g. if password requirements are relaxed, scrypt params are weakened, or the workspace is shared between users), in which case HMAC the state file with a key derived from `file.hash`.
