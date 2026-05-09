@@ -8,7 +8,7 @@ import { ChatHistoryProvider } from "@/app/contexts/ChatHistoryContext";
 import { SidebarContext } from "@/app/contexts/SidebarContext";
 import { AppSidebar } from "@/app/components/shared/AppSidebar";
 
-export default function MikeLayout({
+export default function AraLegalLayout({
     children,
 }: {
     children: React.ReactNode;

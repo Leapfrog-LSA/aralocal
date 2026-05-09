@@ -11,15 +11,15 @@ import {
     FolderPlus,
     Trash2,
 } from "lucide-react";
-import type { MikeDocument, MikeFolder } from "@/app/components/shared/types";
+import type { AraLegalDocument, AraLegalFolder } from "@/app/components/shared/types";
 import { VersionChip } from "@/app/components/shared/VersionChip";
 
 interface Props {
     projectName?: string | null;
-    documents: MikeDocument[];
-    folders?: MikeFolder[];
+    documents: AraLegalDocument[];
+    folders?: AraLegalFolder[];
     selectedDocId?: string | null;
-    onDocClick: (doc: MikeDocument) => void;
+    onDocClick: (doc: AraLegalDocument) => void;
     onCreateFolder?: (parentFolderId: string | null, name: string) => Promise<void>;
     onRenameFolder?: (folderId: string, name: string) => Promise<void>;
     onDeleteFolder?: (folderId: string) => Promise<void>;
@@ -131,7 +131,7 @@ export function ProjectExplorer({
     }
 
     function wouldCreateCycle(movingId: string, targetId: string): boolean {
-        let cur: MikeFolder | undefined = folders.find((f) => f.id === targetId);
+        let cur: AraLegalFolder | undefined = folders.find((f) => f.id === targetId);
         while (cur) {
             if (cur.id === movingId) return true;
             if (!cur.parent_folder_id) break;

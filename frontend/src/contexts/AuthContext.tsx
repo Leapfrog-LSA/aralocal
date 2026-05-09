@@ -8,7 +8,7 @@ import React, {
     ReactNode,
 } from "react";
 import { supabase } from "@/lib/supabase";
-import { getApiBase } from "@/app/lib/mikeApi";
+import { getApiBase } from "@/app/lib/araLegalApi";
 
 interface User {
     id: string;

@@ -31,7 +31,7 @@ import {
     deleteProjectFolder,
     moveDocumentToFolder,
     moveSubfolderToFolder,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/araLegalApi";
 import { useAssistantChat } from "@/app/hooks/useAssistantChat";
 import { useChatHistoryContext } from "@/app/contexts/ChatHistoryContext";
 import { UserMessage } from "@/app/components/assistant/UserMessage";
@@ -42,17 +42,17 @@ import { ProjectExplorer } from "@/app/components/projects/ProjectExplorer";
 import { DocView } from "@/app/components/shared/DocView";
 import { OwnerOnlyModal } from "@/app/components/shared/OwnerOnlyModal";
 import { DocxView } from "@/app/components/shared/DocxView";
-import { MikeIcon } from "@/components/chat/mike-icon";
+import { AraLegalIcon } from "@/components/chat/araLegal-icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useSidebar } from "@/app/contexts/SidebarContext";
 import type {
     CitationQuote,
-    MikeCitationAnnotation,
-    MikeDocument,
-    MikeEditAnnotation,
-    MikeMessage,
-    MikeProject,
+    AraLegalCitationAnnotation,
+    AraLegalDocument,
+    AraLegalEditAnnotation,
+    AraLegalMessage,
+    AraLegalProject,
 } from "@/app/components/shared/types";
 import { expandCitationToEntries } from "@/app/components/shared/types";
 
@@ -124,7 +124,7 @@ function AssistantGreeting({ username }: { username: string }) {
                             "transform 900ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
                     }}
                 >
-                    <MikeIcon size={ICON_SIZE} />
+                    <AraLegalIcon size={ICON_SIZE} />
                 </div>
                 <h1
                     ref={textRef}
@@ -205,7 +205,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
     const username =
         profile?.displayName?.trim() || user?.email?.split("@")[0] || "there";
 
-    const [project, setProject] = useState<MikeProject | null>(null);
+    const [project, setProject] = useState<AraLegalProject | null>(null);
     const [chatTitle, setChatTitle] = useState<string | null>(null);
     const [chatOwnerId, setChatOwnerId] = useState<string | null>(null);
     const [ownerOnlyAction, setOwnerOnlyAction] = useState<string | null>(null);
@@ -253,7 +253,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
         chats,
         saveChat,
     } = useChatHistoryContext();
-    const [initialMessages] = useState<MikeMessage[]>(newChatMessages ?? []);
+    const [initialMessages] = useState<AraLegalMessage[]>(newChatMessages ?? []);
     const { messages, isResponseLoading, handleChat, setMessages, cancel } =
         useAssistantChat({ initialMessages, chatId, projectId });
 
@@ -469,7 +469,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
 
     // ── Handlers ──────────────────────────────────────────────────────────────
     const handleSubmit = useCallback(
-        (message: MikeMessage) => {
+        (message: AraLegalMessage) => {
             if (!activeTab) return handleChat(message);
             return handleChat(message, {
                 displayedDoc: {
@@ -481,11 +481,11 @@ export default function ProjectAssistantChatPage({ params }: Props) {
         [activeTab, handleChat],
     );
 
-    const handleDocClick = (doc: MikeDocument) => {
+    const handleDocClick = (doc: AraLegalDocument) => {
         openTab(doc.id, doc.filename);
     };
 
-    const handleCitationClick = (citation: MikeCitationAnnotation) => {
+    const handleCitationClick = (citation: AraLegalCitationAnnotation) => {
         openTab(
             citation.document_id,
             citation.filename,
@@ -502,7 +502,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
         openTab(args.documentId, args.filename, undefined, args.versionId);
     };
 
-    const handleEditViewClick = (ann: MikeEditAnnotation, filename: string) => {
+    const handleEditViewClick = (ann: AraLegalEditAnnotation, filename: string) => {
         openTab(ann.document_id, filename, undefined, ann.version_id ?? null);
         setEditScrollTarget({
             key: `${ann.edit_id}-${Date.now()}`,
@@ -1123,7 +1123,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                     onDrop={handleChatDrop}
                 >
                     <div className="h-10 flex items-center gap-2 px-4 border-b border-gray-200 shrink-0">
-                        <MikeIcon size={16} />
+                        <AraLegalIcon size={16} />
                         <span className="text-xs text-gray-700">
                             Project Assistant
                         </span>

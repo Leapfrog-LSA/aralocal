@@ -1,5 +1,5 @@
 /**
- * Local-filesystem storage for the Mike desktop app.
+ * Local-filesystem storage for the AraLegal desktop app.
  *
  * Files live under `<WORKSPACE_PATH>/files/<key>`. Every read/write resolves
  * the absolute path and rejects anything outside the workspace root (path-

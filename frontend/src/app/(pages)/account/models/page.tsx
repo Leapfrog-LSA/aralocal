@@ -61,7 +61,7 @@ export default function ModelsAndApiKeysPage() {
                     </h2>
                 </div>
                 <p className="text-sm text-gray-500 mb-4 max-w-xl">
-                    Mike needs at least one API key from a model provider to
+                    AraLegal needs at least one API key from a model provider to
                     answer questions. Your keys stay in your workspace and are
                     only used to call the provider you choose.
                 </p>

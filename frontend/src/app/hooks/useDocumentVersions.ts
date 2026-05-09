@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { getApiBase } from "@/app/lib/mikeApi";
+import { getApiBase } from "@/app/lib/araLegalApi";
 
 export interface DocumentVersionRow {
     id: string;

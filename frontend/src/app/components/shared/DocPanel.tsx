@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { getApiBase } from "@/app/lib/mikeApi";
+import { getApiBase } from "@/app/lib/araLegalApi";
 import { applyOptimisticResolution } from "../assistant/EditCard";
 import { DocView } from "./DocView";
 import { DocxView } from "./DocxView";
@@ -14,8 +14,8 @@ import {
 } from "./types";
 import type {
     CitationQuote,
-    MikeCitationAnnotation,
-    MikeEditAnnotation,
+    AraLegalCitationAnnotation,
+    AraLegalEditAnnotation,
 } from "./types";
 
 function isDocxFilename(name: string): boolean {
@@ -31,10 +31,10 @@ function isDocxFilename(name: string): boolean {
  */
 export type DocPanelMode =
     | { kind: "document" }
-    | { kind: "citation"; citation: MikeCitationAnnotation }
+    | { kind: "citation"; citation: AraLegalCitationAnnotation }
     | {
           kind: "edit";
-          edit: MikeEditAnnotation;
+          edit: AraLegalEditAnnotation;
           /**
            * True while an accept/reject request for this exact edit is in
            * flight. Scoped per-edit (not per-document) so sibling edits on
@@ -194,7 +194,7 @@ function CitationHeader({
     filename,
     isReloading,
 }: {
-    citation: MikeCitationAnnotation;
+    citation: AraLegalCitationAnnotation;
     documentId: string;
     versionId: string | null;
     filename: string;
@@ -295,7 +295,7 @@ function EditResolveButtons({
     onResolved,
     onError,
 }: {
-    edit: MikeEditAnnotation;
+    edit: AraLegalEditAnnotation;
     /**
      * True while an accept/reject for any edit on this document is in
      * flight (triggered from here, the inline EditCard, the bulk bar, or

@@ -1,6 +1,6 @@
-# Mike (local desktop edition)
+# AraLegal (local desktop edition)
 
-A downloadable desktop version of the Mike AI legal platform. Everything
+A downloadable desktop version of the AraLegal AI legal platform. Everything
 runs on your computer: documents, database, settings, model API calls.
 No Supabase, no cloud storage, no external login. The only network calls
 the app makes are to whichever model providers' API keys you configure
@@ -42,16 +42,16 @@ shell spawns both as child processes and gates them behind a lock screen.
 
 ## Using the app
 
-1. Run `Mike-Setup-<version>.exe` from `dist/`. (Unsigned — Windows
+1. Run `AraLegal-Setup-<version>.exe` from `dist/`. (Unsigned — Windows
    SmartScreen will warn the first time. Click "More info" → "Run
    anyway".)
-2. Launch **Mike** from the Start menu.
+2. Launch **AraLegal** from the Start menu.
 3. **First launch** — pick a workspace folder. This is where your
    documents, database, and settings will live. Pick somewhere you back
-   up (e.g. inside `Documents`). Mike will refuse to use a folder inside
+   up (e.g. inside `Documents`). AraLegal will refuse to use a folder inside
    its own install directory.
 4. **Set a password** (minimum 10 characters). You'll enter it every
-   time you open Mike. **It can't be recovered** — if you forget it,
+   time you open AraLegal. **It can't be recovered** — if you forget it,
    the workspace data is unreadable. Write it down somewhere safe.
 5. **Settings → Models & API Keys** — paste in at least one model
    provider key (Anthropic and/or Gemini). Links to where to get each
@@ -73,7 +73,7 @@ chosen workspace.
 ### Starting fresh
 
 Delete the workspace folder (or pick a different one on next launch).
-Mike doesn't store anything outside the workspace and Electron's
+AraLegal doesn't store anything outside the workspace and Electron's
 `userData` directory (which only holds the path to the last-used
 workspace).
 
@@ -127,7 +127,7 @@ workspace).
 
 ### Process model
 
-When Mike launches:
+When AraLegal launches:
 
 1. Electron main creates the BrowserWindow with the lock screen
    (`electron/lock/lock.html`). Renderer is sandboxed, no nodeIntegration,
@@ -326,12 +326,12 @@ the counter. The real offline-attack defense is the scrypt parameters
     └── converted-pdfs/<userId>/<docId>.pdf   LibreOffice-converted previews
 ```
 
-Outside the workspace, Mike writes only to Electron's `userData`
-directory (typically `%APPDATA%/Mike/`):
+Outside the workspace, AraLegal writes only to Electron's `userData`
+directory (typically `%APPDATA%/AraLegal/`):
 
 ```
-%APPDATA%/Mike/
-├── config.json   { "lastWorkspace": "C:\\Users\\…\\MikeWorkspace" }
+%APPDATA%/AraLegal/
+├── config.json   { "lastWorkspace": "C:\\Users\\…\\AraLegalWorkspace" }
 └── (no other persistent state)
 ```
 
@@ -383,7 +383,7 @@ DevTools (F12) works in dev only.
 npm run dist
 ```
 
-The installer ends up at `dist/Mike-Setup-<version>.exe` (~480 MB with
+The installer ends up at `dist/AraLegal-Setup-<version>.exe` (~480 MB with
 bundled LibreOffice).
 
 > **First-time `fetch:libreoffice`** downloads ~290 MB from

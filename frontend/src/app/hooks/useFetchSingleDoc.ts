@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { getApiBase } from "@/app/lib/mikeApi";
+import { getApiBase } from "@/app/lib/araLegalApi";
 
 /**
  * /display returns either PDF bytes (when the active version has a PDF

@@ -13,7 +13,7 @@ import {
     ChevronDown,
     Trash2,
 } from "lucide-react";
-import { MikeIcon } from "@/components/chat/mike-icon";
+import { AraLegalIcon } from "@/components/chat/araLegal-icon";
 import {
     streamTabularChat,
     getTabularChats,
@@ -22,11 +22,11 @@ import {
     mapTRMessages,
     type TRChat,
     type TRCitationAnnotation,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/araLegalApi";
 import type {
     AssistantEvent,
     ColumnConfig,
-    MikeDocument,
+    AraLegalDocument,
 } from "../shared/types";
 import { ModelToggle } from "../assistant/ModelToggle";
 import { ApiKeyMissingModal } from "../shared/ApiKeyMissingModal";
@@ -55,7 +55,7 @@ interface Props {
     reviewTitle?: string | null;
     projectName?: string | null;
     columns: ColumnConfig[];
-    documents: MikeDocument[];
+    documents: AraLegalDocument[];
     onCitationClick: (colIdx: number, rowIdx: number) => void;
     onClose: () => void;
     initialChatId?: string | null;
@@ -202,7 +202,7 @@ function TRResponseStatus({ isActive }: { isActive: boolean }) {
 
     return (
         <div className="w-full h-9 flex items-center mb-2">
-            <MikeIcon
+            <AraLegalIcon
                 spin={isActive}
                 done={showDone && doneVisible}
                 mike={!(showDone && doneVisible)}
@@ -1320,7 +1320,7 @@ export function TRChatPanel({
             {/* Header */}
             <div className="flex items-center justify-between h-8 px-2 border-b border-gray-200 shrink-0">
                 <div className="flex items-center gap-1.5 px-2 min-w-0">
-                    <MikeIcon mike size={14} />
+                    <AraLegalIcon mike size={14} />
                     <div
                         onMouseEnter={(e) => {
                             const el = e.currentTarget;
@@ -1396,7 +1396,7 @@ export function TRChatPanel({
             >
                 {messages.length === 0 && !isLoadingMessages && (
                     <div className="flex flex-1 flex-col items-center justify-center gap-2">
-                        <MikeIcon size={24} />
+                        <AraLegalIcon size={24} />
                         <p className="text-sm text-gray-400 text-center">
                             Ask a question about this tabular review.
                         </p>

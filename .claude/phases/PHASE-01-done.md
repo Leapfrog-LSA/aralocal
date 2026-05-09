@@ -45,7 +45,7 @@ Clone the upstream repo, audit Supabase / storage / schema touchpoints, set up p
 - `frontend/src/lib/supabase.ts`, `supabase-server.ts`, `auth.ts` — delete
 - `frontend/src/contexts/AuthContext.tsx`, `UserProfileContext.tsx` — replace with local auth client
 - `frontend/src/app/login/page.tsx`, `signup/page.tsx` — replace with local-password lock screen
-- `frontend/src/app/lib/mikeApi.ts` — base URL from electron preload
+- `frontend/src/app/lib/araLegalApi.ts` — base URL from electron preload
 - `frontend/src/app/hooks/useFetchSingleDoc.ts`, `useFetchDocxBytes.ts`, `useDocumentVersions.ts` — strip Supabase token, use local JWT
 - `frontend/src/app/components/shared/DocPanel.tsx`, `DocxView.tsx` — same
 - `frontend/src/app/components/assistant/EditCard.tsx`, `AssistantMessage.tsx` — same

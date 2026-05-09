@@ -8,7 +8,7 @@ function dbPath(): string {
   const ws = process.env.WORKSPACE_PATH;
   if (!ws) {
     throw new Error(
-      "WORKSPACE_PATH is not set; backend must be spawned by Mike Electron main.",
+      "WORKSPACE_PATH is not set; backend must be spawned by AraLegal Electron main.",
     );
   }
   const dir = path.join(ws, ".mike");

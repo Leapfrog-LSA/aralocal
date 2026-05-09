@@ -101,7 +101,7 @@ const server = app.listen(requestedPort, "127.0.0.1", () => {
   const actualPort =
     typeof addr === "object" && addr ? addr.port : requestedPort;
   setServerPort(actualPort);
-  console.log(`Mike backend running on port ${actualPort}`);
+  console.log(`AraLegal backend running on port ${actualPort}`);
   if (process.env.WORKSPACE_PATH) {
     try {
       const runtimeDir = path.join(process.env.WORKSPACE_PATH, ".mike");

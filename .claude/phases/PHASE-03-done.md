@@ -18,7 +18,7 @@ Replace Supabase JWT verification with locally-issued JWTs everywhere auth is ch
 - **REPLACED** `frontend/src/lib/supabase.ts` — now a compatibility shim. `supabase.auth.getSession()` proxies to `window.mike.getToken/getUser`. `supabase.from(...)` throws (forces PHASE-04 migration of any direct DB callers).
 - **DELETED** `frontend/src/lib/auth.ts` (dead code — no Next.js API routes used it).
 - **DELETED** `frontend/src/lib/supabase-server.ts` (dead code — no callers).
-- **REPLACED** `frontend/src/app/login/page.tsx` and `signup/page.tsx` — now show "Mike is locked, use the launcher" notice (the Electron lock screen owns auth).
+- **REPLACED** `frontend/src/app/login/page.tsx` and `signup/page.tsx` — now show "AraLegal is locked, use the launcher" notice (the Electron lock screen owns auth).
 - AuthContext, all hooks (`useFetchSingleDoc`, `useFetchDocxBytes`, `useDocumentVersions`), and components (`DocPanel`, `DocxView`, `EditCard`, `AssistantMessage`) work unchanged via the shim.
 - UserProfileContext still calls `supabase.from(...)` — the throw is caught by its existing `try/catch` and falls through to a default profile. PHASE-04 routes those calls through the backend.
 

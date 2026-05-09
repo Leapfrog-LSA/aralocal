@@ -38,7 +38,7 @@ export function isWorkspaceValid(workspace: string | undefined): boolean {
   }
 }
 
-export function ensureMikeDir(workspace: string): string {
+export function ensureAraLegalDir(workspace: string): string {
   const mikeDir = path.join(workspace, MIKE_DIR);
   fs.mkdirSync(mikeDir, { recursive: true });
   fs.mkdirSync(path.join(workspace, "files"), { recursive: true });
@@ -65,10 +65,10 @@ function isInsideInstallTree(workspace: string): boolean {
 
 export async function pickWorkspace(): Promise<string | null> {
   const result = await dialog.showOpenDialog({
-    title: "Choose a Mike workspace folder",
+    title: "Choose a AraLegal workspace folder",
     properties: ["openDirectory", "createDirectory"],
     message:
-      "Mike will store all of your documents, settings, and database in this folder.",
+      "AraLegal will store all of your documents, settings, and database in this folder.",
   });
   if (result.canceled || result.filePaths.length === 0) return null;
   const rawPicked = result.filePaths[0];
@@ -90,12 +90,12 @@ export async function pickWorkspace(): Promise<string | null> {
     await dialog.showMessageBox({
       type: "error",
       message:
-        "Workspace cannot live inside the Mike install directory. " +
+        "Workspace cannot live inside the AraLegal install directory. " +
         "Please pick a folder elsewhere (e.g. inside Documents).",
     });
     return null;
   }
-  ensureMikeDir(picked);
+  ensureAraLegalDir(picked);
   return picked;
 }
 

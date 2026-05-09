@@ -13,11 +13,11 @@ import {
     regenerateTabularCell,
     streamTabularGeneration,
     updateTabularReview,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/araLegalApi";
 import type {
     ColumnConfig,
-    MikeDocument,
-    MikeProject,
+    AraLegalDocument,
+    AraLegalProject,
     TabularCell,
     TabularReview,
 } from "../shared/types";
@@ -50,9 +50,9 @@ interface Props {
 export function TRView({ reviewId, projectId }: Props) {
     const { setSidebarOpen } = useSidebar();
     const [review, setReview] = useState<TabularReview | null>(null);
-    const [project, setProject] = useState<MikeProject | null>(null);
+    const [project, setProject] = useState<AraLegalProject | null>(null);
     const [cells, setCells] = useState<TabularCell[]>([]);
-    const [documents, setDocuments] = useState<MikeDocument[]>([]);
+    const [documents, setDocuments] = useState<AraLegalDocument[]>([]);
     const [columns, setColumns] = useState<ColumnConfig[]>([]);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
@@ -158,7 +158,7 @@ export function TRView({ reviewId, projectId }: Props) {
         }
     }
 
-    async function handleAddDocuments(newDocs: MikeDocument[]) {
+    async function handleAddDocuments(newDocs: AraLegalDocument[]) {
         const toAdd = newDocs.filter(
             (d) => !documents.some((existing) => existing.id === d.id),
         );
@@ -773,7 +773,7 @@ export function TRView({ reviewId, projectId }: Props) {
                 <AddProjectDocsModal
                     open={addDocsOpen}
                     onClose={() => setAddDocsOpen(false)}
-                    onSelect={(docs: MikeDocument[]) =>
+                    onSelect={(docs: AraLegalDocument[]) =>
                         handleAddDocuments(docs)
                     }
                     breadcrumb={[
@@ -793,7 +793,7 @@ export function TRView({ reviewId, projectId }: Props) {
                 <AddDocumentsModal
                     open={addDocsOpen}
                     onClose={() => setAddDocsOpen(false)}
-                    onSelect={(docs: MikeDocument[]) =>
+                    onSelect={(docs: AraLegalDocument[]) =>
                         handleAddDocuments(docs)
                     }
                     breadcrumb={[

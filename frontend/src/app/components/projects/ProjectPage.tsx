@@ -43,13 +43,13 @@ import {
     uploadDocumentVersion,
     renameDocumentVersion,
     getProjectPeople,
-    type MikeDocumentVersion,
-} from "@/app/lib/mikeApi";
+    type AraLegalDocumentVersion,
+} from "@/app/lib/araLegalApi";
 import type {
-    MikeDocument,
-    MikeFolder,
-    MikeProject,
-    MikeChat,
+    AraLegalDocument,
+    AraLegalFolder,
+    AraLegalProject,
+    AraLegalChat,
     TabularReview,
 } from "@/app/components/shared/types";
 import { ToolbarTabs } from "@/app/components/shared/ToolbarTabs";
@@ -119,7 +119,7 @@ function DocVersionHistory({
     docId: string;
     filename: string;
     loading: boolean;
-    versions: MikeDocumentVersion[];
+    versions: AraLegalDocumentVersion[];
     onDownloadVersion: (
         docId: string,
         versionId: string,
@@ -272,9 +272,9 @@ function DocVersionHistory({
 }
 
 export function ProjectPage({ projectId }: Props) {
-    const [project, setProject] = useState<MikeProject | null>(null);
-    const [folders, setFolders] = useState<MikeFolder[]>([]);
-    const [chats, setChats] = useState<MikeChat[]>([]);
+    const [project, setProject] = useState<AraLegalProject | null>(null);
+    const [folders, setFolders] = useState<AraLegalFolder[]>([]);
+    const [chats, setChats] = useState<AraLegalChat[]>([]);
     const [projectReviews, setProjectReviews] = useState<TabularReview[]>([]);
     const [loading, setLoading] = useState(true);
     const searchParams = useSearchParams();
@@ -288,8 +288,8 @@ export function ProjectPage({ projectId }: Props) {
     const [ownerOnlyAction, setOwnerOnlyAction] = useState<string | null>(null);
     const { user } = useAuth();
     const [uploadVersionDoc, setUploadVersionDoc] =
-        useState<MikeDocument | null>(null);
-    const [viewingDoc, setViewingDoc] = useState<MikeDocument | null>(null);
+        useState<AraLegalDocument | null>(null);
+    const [viewingDoc, setViewingDoc] = useState<AraLegalDocument | null>(null);
     const [viewingDocVersion, setViewingDocVersion] = useState<{
         id: string;
         label: string;
@@ -311,7 +311,7 @@ export function ProjectPage({ projectId }: Props) {
         Set<string>
     >(() => new Set());
     const [versionsByDocId, setVersionsByDocId] = useState<
-        Map<string, MikeDocumentVersion[]>
+        Map<string, AraLegalDocumentVersion[]>
     >(() => new Map());
     const [loadingVersionDocIds, setLoadingVersionDocIds] = useState<
         Set<string>
@@ -374,12 +374,12 @@ export function ProjectPage({ projectId }: Props) {
      * latest_version_number) and re-fetch the version list so the history
      * panel shows the new row.
      */
-    function handleUploadNewVersion(doc: MikeDocument) {
+    function handleUploadNewVersion(doc: AraLegalDocument) {
         setUploadVersionDoc(doc);
     }
 
     async function submitNewVersion(
-        doc: MikeDocument,
+        doc: AraLegalDocument,
         file: File,
         displayName: string,
     ) {
@@ -472,7 +472,7 @@ export function ProjectPage({ projectId }: Props) {
     useEffect(() => {
         Promise.all([
             getProject(projectId),
-            listProjectChats(projectId).catch(() => [] as MikeChat[]),
+            listProjectChats(projectId).catch(() => [] as AraLegalChat[]),
             listTabularReviews(projectId).catch(() => []),
         ])
             .then(([proj, projectChats, projectReviews]) => {
@@ -550,7 +550,7 @@ export function ProjectPage({ projectId }: Props) {
         // Immediately hide the input and show an optimistic folder row
         setCreatingFolderIn(undefined);
         const tempId = `temp-${Date.now()}`;
-        const optimistic: MikeFolder = {
+        const optimistic: AraLegalFolder = {
             id: tempId,
             project_id: projectId,
             user_id: "",
@@ -605,7 +605,7 @@ export function ProjectPage({ projectId }: Props) {
 
     // ── Doc/chat/review handlers ──────────────────────────────────────────────
 
-    function handleDocsSelected(newDocs: MikeDocument[]) {
+    function handleDocsSelected(newDocs: AraLegalDocument[]) {
         setProject((prev) =>
             prev ? {
                 ...prev,
@@ -810,7 +810,7 @@ export function ProjectPage({ projectId }: Props) {
 
     function wouldCreateCycle(movingId: string, targetId: string): boolean {
         // Returns true if targetId is movingId or a descendant of it
-        let cur: MikeFolder | undefined = folders.find((f) => f.id === targetId);
+        let cur: AraLegalFolder | undefined = folders.find((f) => f.id === targetId);
         while (cur) {
             if (cur.id === movingId) return true;
             if (!cur.parent_folder_id) break;

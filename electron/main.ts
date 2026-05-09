@@ -46,7 +46,7 @@ function createWindow(): BrowserWindow {
     height: 820,
     minWidth: 800,
     minHeight: 600,
-    title: "Mike",
+    title: "AraLegal",
     backgroundColor: "#0b0b0d",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -65,7 +65,7 @@ function createWindow(): BrowserWindow {
         `[loadURL failed] code=${errorCode} desc=${errorDescription} url=${validatedURL}`,
       );
       dialog.showErrorBox(
-        "Mike couldn't load",
+        "AraLegal couldn't load",
         `Failed to open ${validatedURL}\n\n${errorDescription} (code ${errorCode})\n\n` +
           (getLogPath() ? `Check the log file:\n${getLogPath()}` : ""),
       );
@@ -278,7 +278,7 @@ ipcMain.handle("mike:unlock", async (_e, password: unknown) => {
       if (exitInfo && exitInfo.code !== 0) {
         const tail = tailLogFile(50);
         dialog.showErrorBox(
-          "Mike couldn't start",
+          "AraLegal couldn't start",
           `The backend exited with code ${exitInfo.code}.\n\nLast log lines:\n\n${tail}`,
         );
         // tear down the session so the user can retry from the lock screen

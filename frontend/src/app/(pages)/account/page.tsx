@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { LogOut, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
-import { deleteAccount } from "@/app/lib/mikeApi";
+import { deleteAccount } from "@/app/lib/araLegalApi";
 import { useCapabilities } from "@/app/hooks/useCapabilities";
 
 export default function AccountPage() {
@@ -189,8 +189,8 @@ export default function AccountPage() {
                         ) : capabilities ? (
                             <p className="text-sm text-amber-700">
                                 Not detected. LibreOffice ships bundled with
-                                Mike — if this message persists, the install
-                                may be incomplete. Try reinstalling Mike.
+                                AraLegal — if this message persists, the install
+                                may be incomplete. Try reinstalling AraLegal.
                                 Word uploads still work for text, but PDF
                                 preview is unavailable.
                             </p>

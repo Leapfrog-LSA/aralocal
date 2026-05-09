@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { MikeIcon } from "@/components/chat/mike-icon";
+import { AraLegalIcon } from "@/components/chat/araLegal-icon";
 import { useFetchDocxBytes } from "@/app/hooks/useFetchDocxBytes";
 import { supabase } from "@/lib/supabase";
-import { getApiBase } from "@/app/lib/mikeApi";
+import { getApiBase } from "@/app/lib/araLegalApi";
 import {
     clearDocxQuoteHighlights,
     highlightDocxQuote,
@@ -494,7 +494,7 @@ export function DocxView({
             >
                 {loading && !bytes && (
                     <div className="flex h-full items-center justify-center">
-                        <MikeIcon spin mike size={28} />
+                        <AraLegalIcon spin mike size={28} />
                     </div>
                 )}
                 {error && (

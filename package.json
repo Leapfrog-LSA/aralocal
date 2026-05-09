@@ -1,7 +1,7 @@
 {
   "name": "mikelocal-desktop",
   "version": "0.2.0",
-  "description": "Mike — local desktop AI legal platform (Electron shell over the upstream Next.js + Express app)",
+  "description": "AraLegal — local desktop AI legal platform (Electron shell over the upstream Next.js + Express app)",
   "license": "AGPL-3.0-only",
   "private": true,
   "main": "dist-electron/main.js",
@@ -33,7 +33,7 @@
   },
   "build": {
     "appId": "com.mikelocal.desktop",
-    "productName": "Mike",
+    "productName": "AraLegal",
     "asar": true,
     "directories": {
       "output": "dist"
@@ -52,13 +52,13 @@
     ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "artifactName": "Mike-Setup-${version}.${ext}"
+      "artifactName": "AraLegal-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "shortcutName": "Mike"
+      "shortcutName": "AraLegal"
     }
   }
 }

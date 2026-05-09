@@ -48,8 +48,8 @@ native binary, with a clear `npm run dist` flow.
     - Files list bundles `dist-electron/`, `frontend/.next/standalone/` +
       `static/` + `public/`, `backend/dist/` + `migrations/` +
       `node_modules/`, and root `node_modules/`.
-    - Windows NSIS target: `Mike-Setup-${version}.exe`, per-user install,
-      installation directory selectable, Start menu shortcut "Mike".
+    - Windows NSIS target: `AraLegal-Setup-${version}.exe`, per-user install,
+      installation directory selectable, Start menu shortcut "AraLegal".
 
 ### Docs
 - **`README.md`** — full rewrite for end users. Sections: how to use the
@@ -64,7 +64,7 @@ native binary, with a clear `npm run dist` flow.
 - Compiled prod backend smoke: `node backend/dist/index.js` with synthetic
   `WORKSPACE_PATH` / `JWT_SECRET` / `PORT`:
   - migration applied
-  - `Mike backend running on port 3006`
+  - `AraLegal backend running on port 3006`
   - LibreOffice probe ran (logged "not detected")
   - `GET /health` → `{"ok":true}`
 
@@ -75,7 +75,7 @@ native binary, with a clear `npm run dist` flow.
       modules from asar.
 - [x] User-facing README documents install + first-launch + workspace layout.
 - [ ] **Interactive (user)**: run `npm run install:all && npm run dist` →
-      `dist/Mike-Setup-0.1.0.exe` produced. Install on a clean Windows account,
+      `dist/AraLegal-Setup-0.1.0.exe` produced. Install on a clean Windows account,
       launch, pick workspace, set password, paste API key, ask the assistant
       a question, see streaming response.
 

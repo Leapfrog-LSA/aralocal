@@ -30,7 +30,7 @@ export function spawnFrontend(): void {
       PORT: String(FRONTEND_PORT),
       HOSTNAME: "127.0.0.1",
       NODE_ENV: "production",
-      // process.execPath is Mike.exe in a packaged app — this env makes it
+      // process.execPath is AraLegal.exe in a packaged app — this env makes it
       // act as a Node interpreter for the standalone server.js.
       ELECTRON_RUN_AS_NODE: "1",
     },

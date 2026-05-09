@@ -1,4 +1,4 @@
--- Mike one-shot SQLite schema (port of 000_one_shot_schema.sql).
+-- AraLegal one-shot SQLite schema (port of 000_one_shot_schema.sql).
 --
 -- IMPORTANT: when adding/removing columns that store JSON, also update
 -- JSON_COLUMNS_BY_TABLE in backend/src/db/supabaseShim.ts so the shim

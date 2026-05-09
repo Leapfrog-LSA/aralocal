@@ -118,7 +118,7 @@ button.primary:disabled {
 }
 
 /* Without this, .status { display: flex } above wins over the UA
-   [hidden] { display: none } rule and the "Starting Mike…" spinner
+   [hidden] { display: none } rule and the "Starting AraLegal…" spinner
    shows from page load. Scope the flex layout to the visible state. */
 .status:not([hidden]) {
   display: flex;

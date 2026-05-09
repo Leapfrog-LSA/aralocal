@@ -12,7 +12,7 @@
  * reaching for it will throw, which is a useful signal during the migration.
  */
 
-interface MikeBridge {
+interface AraLegalBridge {
     getToken: () => Promise<string | null>;
     getUser: () => Promise<{ id: string; email: string } | null>;
     signOut?: () => Promise<{ ok: boolean }>;
@@ -20,7 +20,7 @@ interface MikeBridge {
 
 declare global {
     interface Window {
-        mike?: MikeBridge & Record<string, unknown>;
+        mike?: AraLegalBridge & Record<string, unknown>;
     }
 }
 

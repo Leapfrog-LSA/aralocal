@@ -190,7 +190,7 @@ export function getCachedProbe(): Probe | null {
 }
 
 /**
- * LibreOffice ships bundled inside Mike, so there is no external
+ * LibreOffice ships bundled inside AraLegal, so there is no external
  * download URL. Kept exported as `null` for API stability — the
  * frontend treats null as "no install link, surface a generic error".
  */

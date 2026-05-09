@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Folder, Search, X } from "lucide-react";
-import type { MikeProject } from "./types";
+import type { AraLegalProject } from "./types";
 
 interface Props {
-    projects: MikeProject[];
+    projects: AraLegalProject[];
     loading: boolean;
     selectedId: string | null;
     onSelect: (id: string | null) => void;

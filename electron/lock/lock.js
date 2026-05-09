@@ -60,7 +60,7 @@ $("setPasswordBtn").addEventListener("click", async () => {
 
 function setBusy(busy, message) {
   $("status").hidden = !busy;
-  $("statusText").textContent = message ?? "Starting Mike…";
+  $("statusText").textContent = message ?? "Starting AraLegal…";
   $("unlockBtn").disabled = busy;
   $("password").disabled = busy;
   $("setPasswordBtn").disabled = busy;
