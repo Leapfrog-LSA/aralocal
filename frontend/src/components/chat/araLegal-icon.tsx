@@ -92,18 +92,18 @@ export function AraLegalIcon({
     spin = false,
     done = false,
     error = false,
-    mike = false,
+    branded = false,
     size = 24,
     style,
 }: {
     spin?: boolean;
     done?: boolean;
     error?: boolean;
-    mike?: boolean;
+    branded?: boolean;
     size?: number;
     style?: React.CSSProperties;
 }) {
-    void mike;
+    void branded;
     const id = useId().replace(/:/g, "");
     const palette = error
         ? ERROR_PALETTE

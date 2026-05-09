@@ -150,7 +150,7 @@ function tailLogFile(maxLines = 50): string {
   }
 }
 
-ipcMain.handle("mike:getState", () => {
+ipcMain.handle("aralegal:getState", () => {
   const cfg = readConfig();
   const ws =
     currentWorkspace ??
@@ -167,7 +167,7 @@ ipcMain.handle("mike:getState", () => {
   };
 });
 
-ipcMain.handle("mike:pickWorkspace", async () => {
+ipcMain.handle("aralegal:pickWorkspace", async () => {
   // C5: don't allow workspace switch while a session is active.
   if (sessionJwt !== null) {
     return {
@@ -189,8 +189,8 @@ ipcMain.handle("mike:pickWorkspace", async () => {
 
 // A1: only the lock screen may set the initial password. Once the renderer
 // loads the main app, this IPC is closed. To rotate a password from inside
-// the app, use `mike:changePassword` (requires the current password).
-ipcMain.handle("mike:setPassword", async (event, password: unknown) => {
+// the app, use `aralegal:changePassword` (requires the current password).
+ipcMain.handle("aralegal:setPassword", async (event, password: unknown) => {
   if (event.sender !== lockWebContents) {
     return {
       ok: false,
@@ -217,7 +217,7 @@ ipcMain.handle("mike:setPassword", async (event, password: unknown) => {
 });
 
 ipcMain.handle(
-  "mike:changePassword",
+  "aralegal:changePassword",
   async (_event, oldPassword: unknown, newPassword: unknown) => {
     if (!currentWorkspace) {
       return { ok: false, error: "No workspace selected." };
@@ -239,7 +239,7 @@ ipcMain.handle(
   },
 );
 
-ipcMain.handle("mike:unlock", async (_e, password: unknown) => {
+ipcMain.handle("aralegal:unlock", async (_e, password: unknown) => {
   if (unlocking) {
     return { ok: false, error: "Unlock already in progress." };
   }
@@ -304,7 +304,7 @@ ipcMain.handle("mike:unlock", async (_e, password: unknown) => {
   }
 });
 
-ipcMain.handle("mike:signOut", async () => {
+ipcMain.handle("aralegal:signOut", async () => {
   // B6: tear down the session, kill children, return to lock screen.
   sessionJwt = null;
   sessionSecret = null;
@@ -314,12 +314,12 @@ ipcMain.handle("mike:signOut", async () => {
   return { ok: true };
 });
 
-ipcMain.handle("mike:getToken", () => sessionJwt);
-ipcMain.handle("mike:getUser", () => {
+ipcMain.handle("aralegal:getToken", () => sessionJwt);
+ipcMain.handle("aralegal:getUser", () => {
   if (!sessionJwt) return null;
   return { id: LOCAL_USER_ID, email: LOCAL_USER_EMAIL };
 });
-ipcMain.handle("mike:getApiPort", () => getBackendPort());
+ipcMain.handle("aralegal:getApiPort", () => getBackendPort());
 
 // CSP for the renderer. Allows: own scripts/styles, inline styles (Next.js
 // + Tailwind ship them), images from local sources + data URIs, fetch/ws

@@ -333,7 +333,7 @@ function ResponseStatus({ status }: { status: StatusState }) {
                 spin={isActive}
                 done={showDone && doneVisible}
                 error={isError}
-                mike={!isError && !(showDone && doneVisible)}
+                branded={!isError && !(showDone && doneVisible)}
                 size={22}
             />
         </div>

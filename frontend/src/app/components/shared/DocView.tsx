@@ -550,7 +550,7 @@ export function DocView({
             >
                 {loading && (
                     <div className="flex h-full items-center justify-center">
-                        <AraLegalIcon spin mike size={28} />
+                        <AraLegalIcon spin branded size={28} />
                     </div>
                 )}
                 {error && (

@@ -1,17 +1,17 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld("mike", {
+contextBridge.exposeInMainWorld("aralegal", {
   // Lock-screen flow
-  getState: () => ipcRenderer.invoke("mike:getState"),
-  pickWorkspace: () => ipcRenderer.invoke("mike:pickWorkspace"),
-  setPassword: (password) => ipcRenderer.invoke("mike:setPassword", password),
-  unlock: (password) => ipcRenderer.invoke("mike:unlock", password),
+  getState: () => ipcRenderer.invoke("aralegal:getState"),
+  pickWorkspace: () => ipcRenderer.invoke("aralegal:pickWorkspace"),
+  setPassword: (password) => ipcRenderer.invoke("aralegal:setPassword", password),
+  unlock: (password) => ipcRenderer.invoke("aralegal:unlock", password),
 
   // Post-unlock — used by the supabase shim and any code needing the API URL
-  getToken: () => ipcRenderer.invoke("mike:getToken"),
-  getUser: () => ipcRenderer.invoke("mike:getUser"),
-  getApiPort: () => ipcRenderer.invoke("mike:getApiPort"),
-  signOut: () => ipcRenderer.invoke("mike:signOut"),
+  getToken: () => ipcRenderer.invoke("aralegal:getToken"),
+  getUser: () => ipcRenderer.invoke("aralegal:getUser"),
+  getApiPort: () => ipcRenderer.invoke("aralegal:getApiPort"),
+  signOut: () => ipcRenderer.invoke("aralegal:signOut"),
   changePassword: (oldPassword, newPassword) =>
-    ipcRenderer.invoke("mike:changePassword", oldPassword, newPassword),
+    ipcRenderer.invoke("aralegal:changePassword", oldPassword, newPassword),
 });

@@ -91,7 +91,7 @@ probeLibreOffice().then((p) => {
 });
 
 // C3: bind to the OS-assigned port (PORT=0 from the spawning Electron main),
-// then publish the assigned port to <workspace>/.mike/runtime.json so the
+// then publish the assigned port to <workspace>/.aralegal/runtime.json so the
 // renderer can discover it. Falls back to 3001 if PORT is set explicitly
 // (useful for `npm --prefix backend run dev`).
 const requestedPort = Number(process.env.PORT ?? 3001);
@@ -104,7 +104,7 @@ const server = app.listen(requestedPort, "127.0.0.1", () => {
   console.log(`AraLegal backend running on port ${actualPort}`);
   if (process.env.WORKSPACE_PATH) {
     try {
-      const runtimeDir = path.join(process.env.WORKSPACE_PATH, ".mike");
+      const runtimeDir = path.join(process.env.WORKSPACE_PATH, ".aralegal");
       fs.mkdirSync(runtimeDir, { recursive: true });
       const tmp = path.join(runtimeDir, `runtime.json.${process.pid}.tmp`);
       const dest = path.join(runtimeDir, "runtime.json");

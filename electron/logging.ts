@@ -11,7 +11,7 @@ function rotateLogs(dir: string): void {
   try {
     const entries = fs
       .readdirSync(dir)
-      .filter((name) => name.startsWith("mike-") && name.endsWith(".log"))
+      .filter((name) => name.startsWith("aralegal-") && name.endsWith(".log"))
       .map((name) => {
         const full = path.join(dir, name);
         let mtime = 0;
@@ -37,15 +37,15 @@ function rotateLogs(dir: string): void {
 
 /**
  * Mirrors console + child-process output to a per-launch log file inside the
- * workspace's `.mike/logs/` directory. Lets users (or us, remotely) inspect
+ * workspace's `.aralegal/logs/` directory. Lets users (or us, remotely) inspect
  * what happened on a packaged build where there's no terminal attached.
  */
 export function initLogging(workspace: string): string {
-  const dir = path.join(workspace, ".mike", "logs");
+  const dir = path.join(workspace, ".aralegal", "logs");
   fs.mkdirSync(dir, { recursive: true });
   rotateLogs(dir);
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  logPath = path.join(dir, `mike-${stamp}.log`);
+  logPath = path.join(dir, `aralegal-${stamp}.log`);
   logStream = fs.createWriteStream(logPath, { flags: "a" });
 
   const writeLog = (prefix: string, args: unknown[]): void => {

@@ -171,7 +171,7 @@ export async function waitForBackend(timeoutMs = 30_000): Promise<boolean> {
 }
 
 export function getBackendPort(): number {
-  // Renderer asks for this via window.mike.getApiPort. Falls back to 3001 to
+  // Renderer asks for this via window.aralegal.getApiPort. Falls back to 3001 to
   // keep the legacy default if the runtime file is missing for any reason.
   if (backendPort !== null) return backendPort;
   const rt = readRuntimeFile();

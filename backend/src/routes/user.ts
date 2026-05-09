@@ -81,7 +81,7 @@ userRouter.patch("/profile", requireAuth, async (req, res) => {
 // DELETE /user/account — local "delete account" reduces to clearing the
 // SQLite tables. The workspace files and the encryption-key store are kept;
 // the user can pick a fresh password on next launch by deleting the
-// workspace's `.mike` folder if they want a clean slate. We surface a
+// workspace's `.aralegal` folder if they want a clean slate. We surface a
 // no-op success here so the UI works the same as the cloud version.
 userRouter.delete("/account", requireAuth, async (_req, res) => {
   res.status(204).send();

@@ -5,7 +5,7 @@
  * components and hooks. In the local desktop build, the JWT comes from the
  * Electron main process (the lock screen issues it after the user enters their
  * password). This shim exposes the same `supabase.auth.*` surface the rest of
- * the app already calls, but backs it with `window.mike.*` IPC.
+ * the app already calls, but backs it with `window.aralegal.*` IPC.
  *
  * `supabase.from(...)` is intentionally not implemented — direct DB access from
  * the browser is replaced by routed backend calls in PHASE-04. Any caller still
@@ -20,7 +20,7 @@ interface AraLegalBridge {
 
 declare global {
     interface Window {
-        mike?: AraLegalBridge & Record<string, unknown>;
+        aralegal?: AraLegalBridge & Record<string, unknown>;
     }
 }
 
@@ -49,7 +49,7 @@ async function readBridge(): Promise<CachedBridge> {
     if (cachedBridge) return cachedBridge;
     if (inflightBridge) return inflightBridge;
     if (typeof window === "undefined") return null;
-    const bridge = window.mike;
+    const bridge = window.aralegal;
     if (!bridge?.getToken || !bridge?.getUser) return null;
     inflightBridge = (async () => {
         const [token, user] = await Promise.all([
@@ -99,7 +99,7 @@ export const supabase = {
             clearBridgeCache();
             if (typeof window !== "undefined") {
                 try {
-                    await window.mike?.signOut?.();
+                    await window.aralegal?.signOut?.();
                 } catch {
                     // main process will reload the lock screen anyway
                 }

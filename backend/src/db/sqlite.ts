@@ -11,9 +11,9 @@ function dbPath(): string {
       "WORKSPACE_PATH is not set; backend must be spawned by AraLegal Electron main.",
     );
   }
-  const dir = path.join(ws, ".mike");
+  const dir = path.join(ws, ".aralegal");
   fs.mkdirSync(dir, { recursive: true });
-  return path.join(dir, "mike.db");
+  return path.join(dir, "aralegal.db");
 }
 
 export function getDb(): Database.Database {

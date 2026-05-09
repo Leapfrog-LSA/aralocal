@@ -820,8 +820,8 @@ export function ProjectPage({ projectId }: Props) {
     }
 
     async function handleDropOnFolder(targetFolderId: string | null, dt: DataTransfer) {
-        const docId = dt.getData("application/mike-doc");
-        const subFolderId = dt.getData("application/mike-folder");
+        const docId = dt.getData("application/aralegal-doc");
+        const subFolderId = dt.getData("application/aralegal-folder");
         if (docId) {
             const doc = (project?.documents ?? []).find((d) => d.id === docId);
             if (!doc || (doc.folder_id ?? null) === targetFolderId) return;
@@ -903,7 +903,7 @@ export function ProjectPage({ projectId }: Props) {
                             <div
                                 draggable
                                 onDragStart={(e) => {
-                                    e.dataTransfer.setData("application/mike-doc", doc.id);
+                                    e.dataTransfer.setData("application/aralegal-doc", doc.id);
                                     e.dataTransfer.effectAllowed = "move";
                                 }}
                                 onClick={() => {
@@ -1030,7 +1030,7 @@ export function ProjectPage({ projectId }: Props) {
                             <div
                                 draggable
                                 onDragStart={(e) => {
-                                    e.dataTransfer.setData("application/mike-folder", folder.id);
+                                    e.dataTransfer.setData("application/aralegal-folder", folder.id);
                                     e.dataTransfer.effectAllowed = "move";
                                     e.stopPropagation();
                                 }}

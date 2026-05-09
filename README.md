@@ -67,7 +67,7 @@ needed.
 ### Backing up
 
 Copy the entire workspace folder. That's it — everything (DB, files,
-auth hash, settings) lives inside `.mike/` and `files/` under your
+auth hash, settings) lives inside `.aralegal/` and `files/` under your
 chosen workspace.
 
 ### Starting fresh
@@ -134,7 +134,7 @@ When AraLegal launches:
    contextIsolation on, with a CSP that locks `script-src` / `connect-src`
    to `'self'` + `localhost` + the AI providers.
 2. User picks a workspace and enters their password. `electron/auth.ts`
-   verifies against the scrypt hash in `<workspace>/.mike/auth.json`.
+   verifies against the scrypt hash in `<workspace>/.aralegal/auth.json`.
 3. On success, Electron mints **two random per-launch secrets**:
    - `JWT_SECRET` (32 random bytes, hex) — signs the session JWT the
      renderer presents to the backend.
@@ -145,10 +145,10 @@ When AraLegal launches:
    in env, plus `WORKSPACE_PATH`, `LOCAL_USER_*`, the user's API keys,
    and `PORT=0` (OS-assigned port).
 5. Backend writes the assigned port to
-   `<workspace>/.mike/runtime.json`; Electron reads it and waits for
+   `<workspace>/.aralegal/runtime.json`; Electron reads it and waits for
    `/health` to return 200 before navigating the renderer.
-6. Renderer loads the Next.js frontend, calls `mike.getApiPort()` and
-   `mike.getToken()` over IPC, attaches `Authorization: Bearer …` to
+6. Renderer loads the Next.js frontend, calls `aralegal.getApiPort()` and
+   `aralegal.getToken()` over IPC, attaches `Authorization: Bearer …` to
    every API request.
 
 When the user clicks **Sign out** (or closes the window):
@@ -165,7 +165,7 @@ The JWT and download secrets never persist across launches. There's no
 parameter-validated on the main side:
 
 ```js
-window.mike = {
+window.aralegal = {
   getState, pickWorkspace, setPassword, unlock,   // lock screen
   getToken, getUser, getApiPort,                   // post-unlock
   signOut, changePassword,
@@ -186,7 +186,7 @@ limit, contains, single, maybeSingle, RPC) and compiles to SQL against
 through JSON.stringify/parse automatically (per `JSON_COLUMNS_BY_TABLE`).
 
 The frontend's `supabase.auth.*` calls go through `frontend/src/lib/supabase.ts`,
-which is a thin shim over `window.mike.getToken/getUser/signOut`. The
+which is a thin shim over `window.aralegal.getToken/getUser/signOut`. The
 JWT is cached at module scope on first read (stable for the launch
 lifetime) and cleared on signOut.
 
@@ -231,7 +231,7 @@ It is **not** a defense against:
 
 ### Password storage
 
-`auth.json` in the workspace's `.mike/` directory holds:
+`auth.json` in the workspace's `.aralegal/` directory holds:
 
 ```json
 {
@@ -299,7 +299,7 @@ for display and download `Content-Disposition`, never as path components.
 
 ### Lockout state
 
-`<workspace>/.mike/auth-state.json` tracks failed-attempt count and
+`<workspace>/.aralegal/auth-state.json` tracks failed-attempt count and
 lockout deadline. **Documented as a UX rate-limit, not an offline-attack
 defense** — a user with shell access can edit/delete the file to reset
 the counter. The real offline-attack defense is the scrypt parameters
@@ -311,13 +311,13 @@ the counter. The real offline-attack defense is the scrypt parameters
 
 ```
 <your workspace>/
-├── .mike/
+├── .aralegal/
 │   ├── auth.json            scrypt password hash + parameters
 │   ├── auth-state.json      lockout state (UX rate-limit)
-│   ├── mike.db              SQLite — projects, chats, documents,
+│   ├── aralegal.db              SQLite — projects, chats, documents,
 │   │                        document_versions, tabular_reviews, profiles, …
-│   ├── mike.db-wal          SQLite WAL journal
-│   ├── mike.db-shm          SQLite shared-memory file
+│   ├── aralegal.db-wal          SQLite WAL journal
+│   ├── aralegal.db-shm          SQLite shared-memory file
 │   └── runtime.json         backend's assigned port + PID (overwritten on launch)
 └── files/
     ├── documents/local-user/<doc-id>/
@@ -427,7 +427,7 @@ mikelocal/
 │   ├── backend.ts               spawn/wait/stop the Express backend
 │   ├── frontend.ts              spawn/wait/stop the Next.js standalone server
 │   ├── paths.ts                 resolve dist paths in dev vs packaged
-│   ├── preload.js               contextBridge → window.mike
+│   ├── preload.js               contextBridge → window.aralegal
 │   ├── logging.ts               file logging with secret redaction
 │   └── lock/                    lock-screen HTML/CSS/JS (sandbox-safe)
 │
@@ -435,7 +435,7 @@ mikelocal/
 │   └── src/
 │       ├── app/                 routes, components, hooks
 │       ├── contexts/            AuthContext, UserProfileContext, ChatHistoryContext
-│       └── lib/supabase.ts      shim over window.mike.* IPC
+│       └── lib/supabase.ts      shim over window.aralegal.* IPC
 │
 ├── backend/                     Express API
 │   ├── src/

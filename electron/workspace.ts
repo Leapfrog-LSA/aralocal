@@ -7,7 +7,7 @@ interface AppConfig {
 }
 
 const CONFIG_FILE = "config.json";
-const MIKE_DIR = ".mike";
+const MIKE_DIR = ".aralegal";
 
 function configPath(): string {
   return path.join(app.getPath("userData"), CONFIG_FILE);

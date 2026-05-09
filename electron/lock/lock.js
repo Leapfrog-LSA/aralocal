@@ -12,7 +12,7 @@ function show(sectionId, subtitle) {
 }
 
 async function refresh() {
-  const state = await window.mike.getState();
+  const state = await window.aralegal.getState();
   $("card").hidden = false;
   setError("");
 
@@ -31,7 +31,7 @@ async function refresh() {
 
 $("pickBtn").addEventListener("click", async () => {
   setError("");
-  const result = await window.mike.pickWorkspace();
+  const result = await window.aralegal.pickWorkspace();
   if (!result.ok) return;
   await refresh();
 });
@@ -48,7 +48,7 @@ $("setPasswordBtn").addEventListener("click", async () => {
     setError("Passwords do not match.");
     return;
   }
-  const result = await window.mike.setPassword(pw);
+  const result = await window.aralegal.setPassword(pw);
   if (!result.ok) {
     setError(result.error ?? "Failed to set password.");
     return;
@@ -70,7 +70,7 @@ $("unlockBtn").addEventListener("click", async () => {
   setError("");
   const pw = $("password").value;
   setBusy(true, "Unlocking…");
-  const result = await window.mike.unlock(pw);
+  const result = await window.aralegal.unlock(pw);
   if (!result.ok) {
     setBusy(false);
     setError(result.error ?? "Failed to unlock.");

@@ -122,7 +122,7 @@ async function readExpectedHash(shaFile) {
 
 async function main() {
     fs.mkdirSync(vendorDir, { recursive: true });
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "mike-lo-"));
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "aralegal-lo-"));
     const msiPath = path.join(tmpDir, MSI_NAME);
     const shaPath = `${msiPath}.sha256`;
 

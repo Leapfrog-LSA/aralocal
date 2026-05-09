@@ -35,7 +35,7 @@ interface ServerChatDetailOut {
 }
 
 // C3: backend binds to an OS-assigned port. Read it via the Electron preload
-// (`window.mike.getApiPort()`), cache for the session — port doesn't change
+// (`window.aralegal.getApiPort()`), cache for the session — port doesn't change
 // without a relaunch. The fallback keeps `next dev` working in a browser.
 const FALLBACK_API_BASE =
     process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
@@ -45,7 +45,7 @@ let cachedApiBase: string | null = null;
 export async function getApiBase(): Promise<string> {
     if (cachedApiBase) return cachedApiBase;
     if (typeof window !== "undefined") {
-        const bridge = window.mike as
+        const bridge = window.aralegal as
             | { getApiPort?: () => Promise<number> }
             | undefined;
         if (bridge?.getApiPort) {
