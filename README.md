@@ -1,5 +1,7 @@
 # AraLegal (local desktop edition)
 
+> **Fork notice**: AraLegal (aralocal) is a modified version of [mikelocal](https://github.com/rafal-fryc/mikelocal) by rafal-fryc, originally licensed under AGPL-3.0. Modified by Leapfrog-LSA — May 2026.
+
 A downloadable desktop version of the AraLegal AI legal platform. Everything
 runs on your computer: documents, database, settings, model API calls.
 No Supabase, no cloud storage, no external login. The only network calls
