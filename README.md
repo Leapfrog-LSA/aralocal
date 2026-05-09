@@ -416,7 +416,7 @@ npm run build:frontend    # next build + stage-frontend
 ## Project layout
 
 ```
-mikelocal/
+aralocal/
 ├── electron/                    Electron main process
 │   ├── main.ts                  app lifecycle, IPC handlers, CSP, DevTools gating
 │   ├── auth.ts                  scrypt password hash + verify, lockout state

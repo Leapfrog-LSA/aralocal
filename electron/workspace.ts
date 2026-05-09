@@ -7,7 +7,7 @@ interface AppConfig {
 }
 
 const CONFIG_FILE = "config.json";
-const MIKE_DIR = ".aralegal";
+const ARALEGAL_DIR = ".aralegal";
 
 function configPath(): string {
   return path.join(app.getPath("userData"), CONFIG_FILE);
@@ -39,10 +39,10 @@ export function isWorkspaceValid(workspace: string | undefined): boolean {
 }
 
 export function ensureAraLegalDir(workspace: string): string {
-  const mikeDir = path.join(workspace, MIKE_DIR);
-  fs.mkdirSync(mikeDir, { recursive: true });
+  const aralegalDir = path.join(workspace, ARALEGAL_DIR);
+  fs.mkdirSync(aralegalDir, { recursive: true });
   fs.mkdirSync(path.join(workspace, "files"), { recursive: true });
-  return mikeDir;
+  return aralegalDir;
 }
 
 function isInsideInstallTree(workspace: string): boolean {
@@ -100,19 +100,19 @@ export async function pickWorkspace(): Promise<string | null> {
 }
 
 export function authFilePath(workspace: string): string {
-  return path.join(workspace, MIKE_DIR, "auth.json");
+  return path.join(workspace, ARALEGAL_DIR, "auth.json");
 }
 
 export function secretsFilePath(workspace: string): string {
-  return path.join(workspace, MIKE_DIR, "secrets.enc");
+  return path.join(workspace, ARALEGAL_DIR, "secrets.enc");
 }
 
 export function authStateFilePath(workspace: string): string {
-  return path.join(workspace, MIKE_DIR, "auth-state.json");
+  return path.join(workspace, ARALEGAL_DIR, "auth-state.json");
 }
 
 export function runtimeFilePath(workspace: string): string {
-  return path.join(workspace, MIKE_DIR, "runtime.json");
+  return path.join(workspace, ARALEGAL_DIR, "runtime.json");
 }
 
 /**

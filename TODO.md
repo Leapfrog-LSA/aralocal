@@ -30,7 +30,7 @@ These all come from transitive deps inside `electron-builder` / `electron-rebuil
 - **No "delete account" cleanup yet** — `DELETE /user/account` returns 204 but does nothing. Future: clear all SQLite tables and reset the password file.
 - **Document conversion failures** when LibreOffice is missing log to console but don't surface to the user inside the upload flow. The Account → System section shows status, but a banner inside the upload modal would be friendlier.
 - **No logout button works in desktop mode** — the AuthContext `signOut` is a no-op. To "log out", user must close and re-open the app. Acceptable for v1; revisit if needed.
-- **Frontend depends on `mikelocal-desktop: "file:.."`** — npm added this during `install:all` from the workspace context. Harmless but unusual. Clean up later if it causes install issues elsewhere.
+- **Frontend depends on `aralegal-desktop: "file:.."`** — npm added this during `install:all` from the workspace context. Harmless but unusual. Clean up later if it causes install issues elsewhere.
 
 ## Cross-platform
 

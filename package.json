@@ -1,5 +1,5 @@
 {
-  "name": "mikelocal-desktop",
+  "name": "aralegal-desktop",
   "version": "0.2.0",
   "description": "AraLegal — local desktop AI legal platform (Electron shell over the upstream Next.js + Express app)",
   "license": "AGPL-3.0-only",
@@ -32,7 +32,7 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.mikelocal.desktop",
+    "appId": "com.aralegal.desktop",
     "productName": "AraLegal",
     "asar": true,
     "directories": {

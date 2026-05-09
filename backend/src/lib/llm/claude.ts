@@ -10,7 +10,7 @@ import type {
 } from "./types";
 import { toClaudeTools } from "./tools";
 
-const RAW_STREAM_DEBUG = !!process.env.MIKE_DEBUG_RAW_STREAM;
+const RAW_STREAM_DEBUG = !!process.env.ARALEGAL_DEBUG_RAW_STREAM;
 const RAW_STREAM_LOG_PATH = RAW_STREAM_DEBUG
     ? path.resolve(process.cwd(), "claude-raw-stream.log")
     : null;

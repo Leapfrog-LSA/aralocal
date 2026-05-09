@@ -56,7 +56,7 @@ function main() {
   copyDir(distSrc, path.join(STAGE, "dist"));
   copyDir(path.join(BACKEND, "migrations"), path.join(STAGE, "migrations"));
 
-  // Write a CLEANED package.json that strips the `mikelocal-desktop: file:..`
+  // Write a CLEANED package.json that strips the `aralegal-desktop: file:..`
   // self-reference. That dep is harmless for local development (it symlinks
   // the parent project so backend can `import` from it if needed) but
   // catastrophic in a packaged installer — npm/electron-builder follow the
@@ -67,10 +67,10 @@ function main() {
     "utf8",
   );
   const pkg = JSON.parse(pkgRaw);
-  if (pkg.dependencies && "mikelocal-desktop" in pkg.dependencies) {
-    delete pkg.dependencies["mikelocal-desktop"];
+  if (pkg.dependencies && "aralegal-desktop" in pkg.dependencies) {
+    delete pkg.dependencies["aralegal-desktop"];
     console.log(
-      "[stage-backend] stripped mikelocal-desktop self-reference from staged package.json",
+      "[stage-backend] stripped aralegal-desktop self-reference from staged package.json",
     );
   }
   // Also drop devDependencies entirely — npm install --omit=dev would skip

@@ -28,7 +28,7 @@
         "lucide-react": "^0.553.0",
         "mammoth": "^1.11.0",
         "marked": "^17.0.1",
-        "mikelocal-desktop": "file:..",
+        "aralegal-desktop": "file:..",
         "next": "16.0.3",
         "nextjs-toploader": "^3.9.17",
         "pdfjs-dist": "4.10.38",

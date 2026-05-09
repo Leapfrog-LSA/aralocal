@@ -21,7 +21,7 @@
     "jszip": "^3.10.1",
     "libreoffice-convert": "^1.6.0",
     "mammoth": "^1.9.0",
-    "mikelocal-desktop": "file:..",
+    "aralegal-desktop": "file:..",
     "multer": "^1.4.5-lts.2",
     "pdfjs-dist": "^4.10.38",
     "resend": "^4.5.1"

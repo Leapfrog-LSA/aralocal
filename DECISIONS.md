@@ -1,6 +1,6 @@
 # Decisions
 
-## 2026-05-01 — Fork mikelocal as Electron desktop app
+## 2026-05-01 — Fork aralocal as Electron desktop app
 **Chosen:** Wrap the existing Next.js + Express stack in Electron as a downloaded Windows app.
 **Alternatives:** Tauri (Rust shell — would require rewriting backend or running it as a sidecar with extra complexity), web app stays as-is (not what user wants), Flutter+local-server (bigger rewrite).
 **Why:** Electron preserves the existing Next.js + Express code with minimal rework. Renderer talks to Express on a localhost port — same code path as web. Tauri's binary-size win doesn't justify rewriting backend.

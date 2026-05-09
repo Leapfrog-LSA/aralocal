@@ -15,7 +15,7 @@ const proc = spawn(
     env: {
       ...process.env,
       NODE_ENV: "development",
-      MIKE_BOOT_CHECK: "1",
+      ARALEGAL_BOOT_CHECK: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
   },
