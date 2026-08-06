@@ -37,6 +37,10 @@
 ---
 
 ## 2026-05-01 — LibreOffice NOT bundled; runtime detection
+> **SUPERSEDED on 2026-08-06** — LibreOffice is now fetched at build time and
+> shipped inside the installer. See "LibreOffice bundled into the installer"
+> at the bottom of this file. Kept for the record; do not act on it.
+
 **Chosen:** Probe for `soffice` at backend startup; if absent, disable DOC/DOCX upload paths and surface a friendly "Install LibreOffice" banner with download link.
 **Alternatives:** Bundle a portable LibreOffice (~400 MB), bundle a smaller converter (no good FOSS option for DOC/DOCX→PDF), require LibreOffice install before app run (bad UX for non-technical users).
 **Why:** A 400 MB installer for a feature many users won't hit on day one is a worse trade than graceful degradation. PDF/TXT covers the common case.
@@ -87,3 +91,17 @@
 **Why:** The lockout exists to slow down an interactive human at the lock screen who has fat-fingered or is shoulder-surfing — not to defend against an offline brute-force attempt. The real defense against offline attack is `scrypt` with `N=131072, r=8` (~400 ms per derive, ~128 MB working set), which is configured in `electron/auth.ts`. An attacker who can read `auth.json` from disk can already attempt scrypt offline at their own pace; deleting `auth-state.json` doesn't speed that up. Adding HMAC machinery would suggest a security guarantee the file does not provide.
 **Trade-offs:** A user (or someone with shell access) can bypass the 30-second wait between tries by deleting the file. That is the documented behavior, not a bug.
 **Revisit if:** Lockout becomes an actual security control (e.g. if password requirements are relaxed, scrypt params are weakened, or the workspace is shared between users), in which case HMAC the state file with a key derived from `file.hash`.
+
+---
+
+## 2026-08-06 — LibreOffice bundled into the installer (supersedes 2026-05-01)
+**Chosen:** Fetch LibreOffice at build time (`npm run fetch:libreoffice`, wired into `npm run dist`) and ship it inside the NSIS installer. DOCX/DOC files render as PDF previews out of the box, with no separate install by the user.
+**Alternatives:** The original runtime-detection approach (probe for `soffice`, degrade gracefully — see the superseded entry above), or requiring users to install LibreOffice themselves.
+**Why:** DOCX is the working format for legal documents, so the "install LibreOffice first" path was hitting the primary entry point rather than an edge case — exactly the condition the earlier entry named as its own trigger to revisit.
+**Trade-offs:** Installer grows by roughly 330 MB extracted. The build now depends on an external download step, so `npm run dist` needs network access.
+**Revisit if:** Installer size becomes a distribution blocker, or a lighter DOCX→PDF converter becomes viable.
+
+<!-- Note: this entry was written on 2026-08-06 to document a change already
+     present in the code and README; the exact date the switch was made is
+     [DA VERIFICARE] in the git history. -->
+
