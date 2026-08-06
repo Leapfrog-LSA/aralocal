@@ -12,6 +12,7 @@ build
 !.env.local.example
 
 *.log
+build-log.txt
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
@@ -19,6 +20,14 @@ next-env.d.ts
 coverage
 
 .claude/settings.local.json
+
+# User workspace data — never commit. .aralegal/ holds the SQLite database
+# (including the scrypt password hash and the user's model API keys) and
+# files/ holds uploaded documents. Both are created at runtime inside the
+# workspace folder the user picks; when that folder is the repo root, they
+# appear here.
+/.aralegal/
+/files/
 
 # Build artifacts — fetched/regenerated locally, never committed.
 # vendor/ holds the extracted LibreOffice tree (~1.5 GB) populated by
